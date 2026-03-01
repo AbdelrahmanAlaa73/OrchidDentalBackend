@@ -1,0 +1,15 @@
+# Render Blueprint for Orchid Dental Backend (NestJS)
+# Root directory for this service must be orchid-dental-backend
+services:
+  - type: web
+    name: orchid-dental-backend
+    runtime: node
+    rootDir: orchid-dental-backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Prevents "JavaScript heap out of memory" during build and at runtime
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=2048
