@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
+import { toObjectIdOrThrow } from '../../common/utils/objectid';
 import { PatientTransfer } from './schemas/patient-transfer.schema';
 import { Patient } from '../patients/schemas/patient.schema';
 
@@ -12,24 +13,27 @@ export class PatientTransfersService {
   ) {}
 
   async transfer(patientId: string, toDoctorId: string, reason: string, notes: string | undefined, userId: string) {
-    const patient = await this.patientModel.findById(patientId);
+    const patientOid = toObjectIdOrThrow(patientId, 'patientId');
+    const toDoctorOid = toObjectIdOrThrow(toDoctorId, 'toDoctorId');
+    const userOid = toObjectIdOrThrow(userId, 'userId');
+    const patient = await this.patientModel.findById(patientOid);
     if (!patient) throw new NotFoundException('Patient not found');
     const fromDoctorId = patient.assignedDoctorId;
     if (!fromDoctorId) throw new NotFoundException('Patient has no assigned doctor to transfer from');
     const transfer = await this.patientTransferModel.create({
-      patientId: new Types.ObjectId(patientId),
+      patientId: patientOid,
       fromDoctorId,
-      toDoctorId: new Types.ObjectId(toDoctorId),
+      toDoctorId: toDoctorOid,
       reason,
       notes,
       transferredAt: new Date().toISOString(),
-      transferredBy: new Types.ObjectId(userId),
+      transferredBy: userOid,
     });
-    await this.patientModel.findByIdAndUpdate(patientId, { assignedDoctorId: new Types.ObjectId(toDoctorId) });
+    await this.patientModel.findByIdAndUpdate(patientOid, { assignedDoctorId: toDoctorOid });
     return this.patientTransferModel.findById(transfer._id).populate('fromDoctorId toDoctorId transferredBy', 'name nameAr email').lean();
   }
 
   async findByPatient(patientId: string) {
-    return this.patientTransferModel.find({ patientId: new Types.ObjectId(patientId) }).populate('fromDoctorId toDoctorId transferredBy', 'name nameAr email').sort({ transferredAt: -1 }).lean();
+    return this.patientTransferModel.find({ patientId: toObjectIdOrThrow(patientId, 'patientId') }).populate('fromDoctorId toDoctorId transferredBy', 'name nameAr email').sort({ transferredAt: -1 }).lean();
   }
 }

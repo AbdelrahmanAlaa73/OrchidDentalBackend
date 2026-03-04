@@ -9,6 +9,7 @@ import { Doctor } from '../doctors/schemas/doctor.schema';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { UserRole } from '../../enums';
+import { toObjectIdOrThrow } from '../../common/utils/objectid';
 
 @Injectable()
 export class AuthService {
@@ -97,7 +98,7 @@ export class AuthService {
       email,
       passwordHash,
       role: dto.role,
-      doctorId: dto.doctorId ? new Types.ObjectId(dto.doctorId) : undefined,
+      doctorId: dto.doctorId ? toObjectIdOrThrow(dto.doctorId, 'doctorId') : undefined,
       permissions: [],
     });
 

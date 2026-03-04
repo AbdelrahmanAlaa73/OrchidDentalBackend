@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { Model } from 'mongoose';
+import { toObjectIdOrThrow } from '../../common/utils/objectid';
 import { InvoicePayment } from '../invoices/schemas/invoice-payment.schema';
 import { Expense } from '../expenses/schemas/expense.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
@@ -102,7 +103,7 @@ export class ReportsService {
     const { start, end } = this.resolveDateRange(query);
     const dayStart = new Date(start + 'T00:00:00.000Z');
     const dayEnd = new Date(end + 'T23:59:59.999Z');
-    const doctorIdFilter = query.doctorId ? { doctorId: new Types.ObjectId(query.doctorId) } : {};
+    const doctorIdFilter = query.doctorId ? { doctorId: toObjectIdOrThrow(query.doctorId, 'doctorId') } : {};
 
     const [invoices, payments, expenses, pricingList, appointmentsByDate] = await Promise.all([
       this.invoiceModel

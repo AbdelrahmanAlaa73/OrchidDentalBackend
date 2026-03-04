@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
 import { Invoice } from './schemas/invoice.schema';
 import { InvoicePayment } from './schemas/invoice-payment.schema';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -31,10 +32,12 @@ export class InvoicesService {
 
   async findAll(query: { patientId?: string; doctorId?: string; status?: string; includePayments?: boolean }, doctorIdFilter?: string) {
     const filter: Record<string, unknown> = {};
-    if (query.patientId) filter.patientId = new Types.ObjectId(query.patientId);
-    if (query.doctorId) filter.doctorId = new Types.ObjectId(query.doctorId);
+    const patientId = toObjectIdOrUndefined(query.patientId);
+    if (patientId) filter.patientId = patientId;
+    const doctorId = toObjectIdOrUndefined(query.doctorId);
+    if (doctorId) filter.doctorId = doctorId;
     if (query.status) filter.status = query.status;
-    if (doctorIdFilter) filter.doctorId = new Types.ObjectId(doctorIdFilter);
+    if (doctorIdFilter) filter.doctorId = toObjectIdOrThrow(doctorIdFilter, 'doctorId');
     const invoices = await this.invoiceModel
       .find(filter)
       .populate('patientId', 'name nameAr phone')
@@ -59,15 +62,16 @@ export class InvoicesService {
   }
 
   async findOne(id: string, doctorIdFilter?: string): Promise<Record<string, unknown>> {
-    const filter: Record<string, unknown> = { _id: new Types.ObjectId(id) };
-    if (doctorIdFilter) filter.doctorId = new Types.ObjectId(doctorIdFilter);
+    const invoiceId = toObjectIdOrThrow(id, 'id');
+    const filter: Record<string, unknown> = { _id: invoiceId };
+    if (doctorIdFilter) filter.doctorId = toObjectIdOrThrow(doctorIdFilter, 'doctorId');
     const invoice = await this.invoiceModel
       .findOne(filter)
       .populate('patientId', 'name nameAr phone')
       .populate('doctorId', 'name nameAr color')
       .lean();
     if (!invoice) throw new NotFoundException('Invoice not found');
-    const payments = await this.paymentModel.find({ invoiceId: new Types.ObjectId(id) }).sort({ paidAt: 1 }).lean();
+    const payments = await this.paymentModel.find({ invoiceId }).sort({ paidAt: 1 }).lean();
     return { ...invoice, payments };
   }
 
@@ -80,8 +84,8 @@ export class InvoicesService {
     const paid = body.paid ?? 0;
     const remaining = Math.max(0, total - paid);
     const invoice = await this.invoiceModel.create({
-      patientId: new Types.ObjectId(body.patientId),
-      doctorId: new Types.ObjectId(body.doctorId),
+      patientId: toObjectIdOrThrow(body.patientId, 'patientId'),
+      doctorId: toObjectIdOrThrow(body.doctorId, 'doctorId'),
       items,
       subtotal,
       discount,
@@ -111,9 +115,10 @@ export class InvoicesService {
   }
 
   async update(id: string, body: UpdateInvoiceDto, doctorIdFilter?: string) {
-    const invoice = await this.invoiceModel.findById(id);
+    const invoiceId = toObjectIdOrThrow(id, 'id');
+    const invoice = await this.invoiceModel.findById(invoiceId);
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (doctorIdFilter && !invoice.doctorId.equals(new Types.ObjectId(doctorIdFilter))) throw new ForbiddenException('Forbidden');
+    if (doctorIdFilter && !invoice.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) throw new ForbiddenException('Forbidden');
     if (body.items && Array.isArray(body.items)) {
       const items = body.items.map((i) => ({ ...i, total: (i.quantity ?? 1) * (i.unitPrice ?? 0) }));
       invoice.items = items as never;
@@ -123,28 +128,31 @@ export class InvoicesService {
       invoice.status = computeStatus(invoice.paid, invoice.total);
     }
     await invoice.save();
-    return this.invoiceModel.findById(id).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
+    return this.invoiceModel.findById(invoiceId).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
   }
 
   async remove(id: string, doctorIdFilter?: string) {
-    const invoice = await this.invoiceModel.findById(id);
+    const invoiceId = toObjectIdOrThrow(id, 'id');
+    const invoice = await this.invoiceModel.findById(invoiceId);
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (doctorIdFilter && !invoice.doctorId.equals(new Types.ObjectId(doctorIdFilter))) throw new ForbiddenException('Forbidden');
-    await this.paymentModel.deleteMany({ invoiceId: id });
-    await this.invoiceModel.findByIdAndDelete(id);
+    if (doctorIdFilter && !invoice.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) throw new ForbiddenException('Forbidden');
+    await this.paymentModel.deleteMany({ invoiceId });
+    await this.invoiceModel.findByIdAndDelete(invoiceId);
   }
 
   async listPayments(invoiceId: string, doctorIdFilter?: string) {
-    const invoice = await this.invoiceModel.findById(invoiceId);
+    const invId = toObjectIdOrThrow(invoiceId, 'invoiceId');
+    const invoice = await this.invoiceModel.findById(invId);
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (doctorIdFilter && !invoice.doctorId.equals(new Types.ObjectId(doctorIdFilter))) throw new ForbiddenException('Forbidden');
-    return this.paymentModel.find({ invoiceId }).sort({ paidAt: -1 }).lean();
+    if (doctorIdFilter && !invoice.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) throw new ForbiddenException('Forbidden');
+    return this.paymentModel.find({ invoiceId: invId }).sort({ paidAt: -1 }).lean();
   }
 
   async addPayment(invoiceId: string, amount: number, method: string, doctorIdFilter?: string) {
-    const invoice = await this.invoiceModel.findById(invoiceId);
+    const invId = toObjectIdOrThrow(invoiceId, 'invoiceId');
+    const invoice = await this.invoiceModel.findById(invId);
     if (!invoice) throw new NotFoundException('Invoice not found');
-    if (doctorIdFilter && !invoice.doctorId.equals(new Types.ObjectId(doctorIdFilter))) throw new ForbiddenException('Forbidden');
+    if (doctorIdFilter && !invoice.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) throw new ForbiddenException('Forbidden');
     if (amount > invoice.remaining) throw new ForbiddenException('Amount exceeds remaining balance');
     const afterRemaining = invoice.remaining - amount;
     const paidAt = new Date().toISOString();
@@ -165,6 +173,6 @@ export class InvoicesService {
     invoice.remaining = afterRemaining;
     invoice.status = computeStatus(invoice.paid, invoice.total);
     await invoice.save();
-    return this.paymentModel.findOne({ invoiceId }).sort({ paidAt: -1 }).lean();
+    return this.paymentModel.findOne({ invoiceId: invId }).sort({ paidAt: -1 }).lean();
   }
 }

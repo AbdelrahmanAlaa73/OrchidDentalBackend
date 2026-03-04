@@ -7,6 +7,7 @@ import { CreateAppointmentDto } from './dto/create-appointment.dto';
 import { UpdateAppointmentDto } from './dto/update-appointment.dto';
 import { AppointmentStatus } from '../../enums';
 import { addMinutesToTime } from '../../common/utils/fdi.validator';
+import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
 
 @Injectable()
 export class AppointmentsService {
@@ -18,10 +19,12 @@ export class AppointmentsService {
   async findAll(query: { date?: string; doctorId?: string; patientId?: string; status?: string }, doctorIdFilter?: string) {
     const filter: Record<string, unknown> = {};
     if (query.date) filter.date = query.date;
-    if (query.doctorId) filter.doctorId = new Types.ObjectId(query.doctorId);
-    if (query.patientId) filter.patientId = new Types.ObjectId(query.patientId);
+    const doctorId = toObjectIdOrUndefined(query.doctorId);
+    if (doctorId) filter.doctorId = doctorId;
+    const patientId = toObjectIdOrUndefined(query.patientId);
+    if (patientId) filter.patientId = patientId;
     if (query.status) filter.status = query.status;
-    if (doctorIdFilter) filter.doctorId = new Types.ObjectId(doctorIdFilter);
+    if (doctorIdFilter) filter.doctorId = toObjectIdOrThrow(doctorIdFilter, 'doctorId');
     return this.appointmentModel
       .find(filter)
       .populate('patientId', 'name nameAr phone')
@@ -31,9 +34,11 @@ export class AppointmentsService {
   }
 
   async create(dto: CreateAppointmentDto) {
+    const patientId = toObjectIdOrThrow(dto.patientId, 'patientId');
+    const doctorId = toObjectIdOrThrow(dto.doctorId, 'doctorId');
     const endTime = addMinutesToTime(dto.startTime, dto.duration || 30);
     const conflicting = await this.appointmentModel.findOne({
-      doctorId: new Types.ObjectId(dto.doctorId),
+      doctorId,
       date: dto.date,
       status: { $ne: AppointmentStatus.Cancelled },
       startTime: { $lt: endTime },
@@ -44,19 +49,20 @@ export class AppointmentsService {
     }
     const appointment = await this.appointmentModel.create({
       ...dto,
-      patientId: new Types.ObjectId(dto.patientId),
-      doctorId: new Types.ObjectId(dto.doctorId),
+      patientId,
+      doctorId,
       endTime,
       status: AppointmentStatus.Scheduled,
     });
-    await this.patientModel.findByIdAndUpdate(dto.patientId, { lastVisit: dto.date });
+    await this.patientModel.findByIdAndUpdate(patientId, { lastVisit: dto.date });
     return this.appointmentModel.findById(appointment._id).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
   }
 
   async update(id: string, dto: UpdateAppointmentDto, doctorIdFilter?: string) {
-    const appointment = await this.appointmentModel.findById(id);
+    const appointmentId = toObjectIdOrThrow(id, 'id');
+    const appointment = await this.appointmentModel.findById(appointmentId);
     if (!appointment) throw new NotFoundException('Appointment not found');
-    if (doctorIdFilter && !appointment.doctorId.equals(new Types.ObjectId(doctorIdFilter))) {
+    if (doctorIdFilter && !appointment.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) {
       throw new ForbiddenException('Not your appointment');
     }
     const date = dto.date ?? appointment.date;
@@ -64,10 +70,10 @@ export class AppointmentsService {
     const duration = dto.duration ?? appointment.duration;
     const endTime = addMinutesToTime(startTime, duration);
     const doctorId = dto.doctorId != null
-      ? new Types.ObjectId(dto.doctorId)
+      ? toObjectIdOrThrow(dto.doctorId, 'doctorId')
       : appointment.doctorId;
     const conflicting = await this.appointmentModel.findOne({
-      _id: { $ne: new Types.ObjectId(id) },
+      _id: { $ne: appointmentId },
       doctorId,
       date,
       status: { $ne: AppointmentStatus.Cancelled },
@@ -81,8 +87,8 @@ export class AppointmentsService {
     appointment.startTime = startTime;
     appointment.duration = duration;
     appointment.endTime = endTime;
-    if (dto.patientId != null) appointment.patientId = new Types.ObjectId(dto.patientId);
-    if (dto.doctorId != null) appointment.doctorId = new Types.ObjectId(dto.doctorId);
+    if (dto.patientId != null) appointment.patientId = toObjectIdOrThrow(dto.patientId, 'patientId');
+    if (dto.doctorId != null) appointment.doctorId = toObjectIdOrThrow(dto.doctorId, 'doctorId');
     if (dto.billingMode != null) appointment.billingMode = dto.billingMode;
     if (dto.procedure != null) appointment.procedure = dto.procedure;
     if (dto.procedureAr != null) appointment.procedureAr = dto.procedureAr;
@@ -90,13 +96,14 @@ export class AppointmentsService {
     if (dto.sterilizationBuffer != null) appointment.sterilizationBuffer = dto.sterilizationBuffer;
     if (dto.toothNumber != null) appointment.toothNumber = dto.toothNumber;
     await appointment.save();
-    return this.appointmentModel.findById(id).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
+    return this.appointmentModel.findById(appointmentId).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
   }
 
   async cancel(id: string, doctorIdFilter?: string) {
-    const appointment = await this.appointmentModel.findById(id);
+    const appointmentId = toObjectIdOrThrow(id, 'id');
+    const appointment = await this.appointmentModel.findById(appointmentId);
     if (!appointment) throw new NotFoundException('Appointment not found');
-    if (doctorIdFilter && !appointment.doctorId.equals(new Types.ObjectId(doctorIdFilter))) {
+    if (doctorIdFilter && !appointment.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) {
       throw new ForbiddenException('Not your appointment');
     }
     appointment.status = AppointmentStatus.Cancelled;
@@ -105,12 +112,13 @@ export class AppointmentsService {
   }
 
   async remove(id: string, doctorIdFilter?: string) {
-    const appointment = await this.appointmentModel.findById(id);
+    const appointmentId = toObjectIdOrThrow(id, 'id');
+    const appointment = await this.appointmentModel.findById(appointmentId);
     if (!appointment) throw new NotFoundException('Appointment not found');
-    if (doctorIdFilter && !appointment.doctorId.equals(new Types.ObjectId(doctorIdFilter))) {
+    if (doctorIdFilter && !appointment.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) {
       throw new ForbiddenException('Not your appointment');
     }
-    await this.appointmentModel.findByIdAndDelete(id);
+    await this.appointmentModel.findByIdAndDelete(appointmentId);
     return { deleted: true, id };
   }
 }

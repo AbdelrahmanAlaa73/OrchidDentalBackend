@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { toObjectIdOrThrow } from '../../common/utils/objectid';
 import { DailyCloseout } from './schemas/daily-closeout.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
 import { InvoicePayment } from '../invoices/schemas/invoice-payment.schema';
@@ -22,7 +23,7 @@ export class DailyCloseoutsService {
   private paymentFilter(date: string, filter?: RoleFilter): Record<string, unknown> {
     const base: Record<string, unknown> = { paidDate: date };
     if (filter?.role === UserRole.Doctor && filter?.doctorId) {
-      base.doctorId = new Types.ObjectId(filter.doctorId);
+      base.doctorId = toObjectIdOrThrow(filter.doctorId, 'doctorId');
     }
     return base;
   }
@@ -33,7 +34,7 @@ export class DailyCloseoutsService {
       return base;
     }
     if (filter?.userId) {
-      base.createdBy = new Types.ObjectId(filter.userId);
+      base.createdBy = toObjectIdOrThrow(filter.userId, 'userId');
     }
     return base;
   }
@@ -116,7 +117,7 @@ export class DailyCloseoutsService {
     const closedAt = new Date().toISOString();
     const closeout = await this.dailyCloseoutModel.create({
       date,
-      closedBy: new Types.ObjectId(closedBy),
+      closedBy: toObjectIdOrThrow(closedBy, 'closedBy'),
       cashCollected,
       cardCollected,
       transferCollected,
