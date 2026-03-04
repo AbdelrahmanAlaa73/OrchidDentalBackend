@@ -80,7 +80,9 @@ export class AuthService {
     ) {
       const doctor = await this.doctorModel.findById(dto.doctorId).lean();
       if (!doctor) {
-        throw new BadRequestException('Invalid doctorId');
+        throw new BadRequestException(
+          'doctorId not found. Use GET /api/doctors to get valid doctor IDs. For admin/owner, omit doctorId.',
+        );
       }
     }
     if (
