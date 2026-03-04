@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ExpensesService } from './expenses.service';
+import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -29,15 +31,17 @@ export class ExpensesController {
 
   @Post()
   @ApiOperation({ summary: 'Create an expense' })
-  create(@Body() body: Record<string, unknown>, @CurrentUser() user?: CurrentUserPayload) {
-    return this.expensesService.create(body, user!.id);
+  @ApiBody({ type: CreateExpenseDto })
+  create(@Body() dto: CreateExpenseDto, @CurrentUser() user?: CurrentUserPayload) {
+    return this.expensesService.create(dto, user!.id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update expense by ID' })
-  update(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user?: CurrentUserPayload) {
+  @ApiBody({ type: UpdateExpenseDto })
+  update(@Param('id') id: string, @Body() dto: UpdateExpenseDto, @CurrentUser() user?: CurrentUserPayload) {
     const isOwnerOrAdmin = user?.role === UserRole.Owner || user?.role === UserRole.Admin;
-    return this.expensesService.update(id, body, user!.id, isOwnerOrAdmin);
+    return this.expensesService.update(id, dto, user!.id, isOwnerOrAdmin);
   }
 
   @Delete(':id')

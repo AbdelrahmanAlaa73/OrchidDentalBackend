@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { WaitingListService } from './waiting-list.service';
+import { CreateWaitingListItemDto } from './dto/create-waiting-list-item.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -22,8 +23,9 @@ export class WaitingListController {
 
   @Post()
   @ApiOperation({ summary: 'Add entry to waiting list' })
-  create(@Body() body: Record<string, unknown>) {
-    return this.waitingListService.create(body);
+  @ApiBody({ type: CreateWaitingListItemDto })
+  create(@Body() dto: CreateWaitingListItemDto) {
+    return this.waitingListService.create(dto);
   }
 
   @Delete(':id')

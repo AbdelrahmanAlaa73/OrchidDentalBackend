@@ -1,10 +1,12 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { ToothProceduresService } from '../tooth-procedures/tooth-procedures.service';
 import { MedicalAlertsService } from '../medical-alerts/medical-alerts.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { CreateToothProcedureDto } from '../tooth-procedures/dto/create-tooth-procedure.dto';
+import { CreateMedicalAlertDto } from '../medical-alerts/dto/create-medical-alert.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -24,6 +26,10 @@ export class PatientsController {
 
   @Get()
   @ApiOperation({ summary: 'List patients with optional filters' })
+  @ApiQuery({ name: 'search', required: false })
+  @ApiQuery({ name: 'assignedDoctorId', required: false })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
   findAll(
     @Query('search') search?: string,
     @Query('assignedDoctorId') assignedDoctorId?: string,
@@ -35,18 +41,21 @@ export class PatientsController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new patient' })
+  @ApiBody({ type: CreatePatientDto })
   create(@Body() dto: CreatePatientDto) {
     return this.patientsService.create(dto);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get patient by ID' })
+  @ApiOperation({ summary: 'Get patient by ID (includes appointments, invoices, dental treatments, alerts)' })
+  @ApiParam({ name: 'id', description: 'Patient MongoDB ObjectId' })
   findOne(@Param('id') id: string): Promise<Record<string, unknown>> {
     return this.patientsService.findOne(id);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update patient by ID' })
+  @ApiBody({ type: UpdatePatientDto })
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
     return this.patientsService.update(id, dto);
   }
@@ -59,8 +68,9 @@ export class PatientsController {
 
   @Post(':id/tooth-procedures')
   @ApiOperation({ summary: 'Add tooth procedure for patient' })
-  addToothProcedure(@Param('id') id: string, @Body() body: Record<string, unknown>) {
-    return this.toothProceduresService.create(id, body);
+  @ApiBody({ type: CreateToothProcedureDto })
+  addToothProcedure(@Param('id') id: string, @Body() dto: CreateToothProcedureDto) {
+    return this.toothProceduresService.create(id, dto);
   }
 
   @Get(':id/alerts')
@@ -71,7 +81,8 @@ export class PatientsController {
 
   @Post(':id/alerts')
   @ApiOperation({ summary: 'Add medical alert for patient' })
-  addAlert(@Param('id') id: string, @Body() body: { type: string; description: string; severity: string }) {
-    return this.medicalAlertsService.create(id, body);
+  @ApiBody({ type: CreateMedicalAlertDto })
+  addAlert(@Param('id') id: string, @Body() dto: CreateMedicalAlertDto) {
+    return this.medicalAlertsService.create(id, dto);
   }
 }

@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { DailyCloseoutsService } from './daily-closeouts.service';
+import { CreateDailyCloseoutDto } from './dto/create-daily-closeout.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -38,8 +39,9 @@ export class DailyCloseoutsController {
 
   @Post()
   @ApiOperation({ summary: 'Create daily closeout' })
-  create(@Body() body: { date: string }, @CurrentUser() user: CurrentUserPayload) {
+  @ApiBody({ type: CreateDailyCloseoutDto })
+  create(@Body() dto: CreateDailyCloseoutDto, @CurrentUser() user: CurrentUserPayload) {
     const roleFilter = { role: user.role as UserRole, userId: user.id, doctorId: user.doctorId };
-    return this.dailyCloseoutsService.create(body.date, user.id, roleFilter);
+    return this.dailyCloseoutsService.create(dto.date, user.id, roleFilter);
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { ClinicSettings } from './schemas/clinic-settings.schema';
+import { UpdateSettingsDto } from './dto/update-settings.dto';
 
 @Injectable()
 export class SettingsService {
@@ -13,8 +14,8 @@ export class SettingsService {
     return settings;
   }
 
-  async update(body: Record<string, unknown>) {
-    const settings = await this.clinicSettingsModel.findOneAndUpdate({}, { $set: body }, { new: true }).lean();
+  async update(dto: UpdateSettingsDto) {
+    const settings = await this.clinicSettingsModel.findOneAndUpdate({}, { $set: dto }, { new: true }).lean();
     if (!settings) throw new NotFoundException('Clinic settings not found. Run seed.');
     return settings;
   }

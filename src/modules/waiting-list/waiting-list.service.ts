@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { WaitingListItem } from './schemas/waiting-list-item.schema';
+import { CreateWaitingListItemDto } from './dto/create-waiting-list-item.dto';
 
 @Injectable()
 export class WaitingListService {
@@ -11,10 +12,10 @@ export class WaitingListService {
     return this.waitingListModel.find().populate('patientId', 'name nameAr phone').sort({ preferredDate: 1, urgency: -1 }).lean();
   }
 
-  async create(body: Record<string, unknown>) {
+  async create(dto: CreateWaitingListItemDto) {
     const item = await this.waitingListModel.create({
-      ...body,
-      patientId: new Types.ObjectId(body.patientId as string),
+      ...dto,
+      patientId: new Types.ObjectId(dto.patientId),
     });
     return this.waitingListModel.findById(item._id).populate('patientId', 'name nameAr phone').lean();
   }

@@ -3,6 +3,8 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Invoice } from './schemas/invoice.schema';
 import { InvoicePayment } from './schemas/invoice-payment.schema';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoiceStatus, DiscountType, PaymentMethod } from '../../enums';
 
 function computeStatus(paid: number, total: number): InvoiceStatus {
@@ -69,7 +71,7 @@ export class InvoicesService {
     return { ...invoice, payments };
   }
 
-  async create(body: { patientId: string; doctorId: string; items: Array<{ description: string; descriptionAr: string; procedure: string; procedureAr: string; quantity: number; unitPrice: number; toothNumber?: number }>; discount?: number; discountType?: DiscountType; paid?: number; paymentMethod?: string; currency?: string; dueDate?: string }) {
+  async create(body: CreateInvoiceDto) {
     const items = body.items.map((i) => ({ ...i, total: i.quantity * i.unitPrice }));
     const subtotal = items.reduce((s, i) => s + i.total, 0);
     const discount = body.discount ?? 0;
@@ -108,12 +110,12 @@ export class InvoicesService {
     return this.invoiceModel.findById(invoice._id).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
   }
 
-  async update(id: string, body: Record<string, unknown>, doctorIdFilter?: string) {
+  async update(id: string, body: UpdateInvoiceDto, doctorIdFilter?: string) {
     const invoice = await this.invoiceModel.findById(id);
     if (!invoice) throw new NotFoundException('Invoice not found');
     if (doctorIdFilter && !invoice.doctorId.equals(new Types.ObjectId(doctorIdFilter))) throw new ForbiddenException('Forbidden');
     if (body.items && Array.isArray(body.items)) {
-      const items = (body.items as Array<{ quantity: number; unitPrice: number; [k: string]: unknown }>).map((i) => ({ ...i, total: (i.quantity ?? 1) * (i.unitPrice ?? 0) }));
+      const items = body.items.map((i) => ({ ...i, total: (i.quantity ?? 1) * (i.unitPrice ?? 0) }));
       invoice.items = items as never;
       invoice.subtotal = items.reduce((s, i) => s + i.total, 0);
       invoice.total = applyDiscount(invoice.subtotal, invoice.discount, invoice.discountType);

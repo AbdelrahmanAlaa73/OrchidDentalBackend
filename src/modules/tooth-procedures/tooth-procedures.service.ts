@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { ToothProcedure } from './schemas/tooth-procedure.schema';
+import { CreateToothProcedureDto } from './dto/create-tooth-procedure.dto';
 
 @Injectable()
 export class ToothProceduresService {
@@ -21,13 +22,13 @@ export class ToothProceduresService {
     return { procedures, byTooth };
   }
 
-  async create(patientId: string, body: Record<string, unknown>) {
+  async create(patientId: string, dto: CreateToothProcedureDto) {
     const procedure = await this.toothProcedureModel.create({
-      ...body,
+      ...dto,
       patientId: new Types.ObjectId(patientId),
-      doctorId: new Types.ObjectId((body.doctorId as string)),
-      appointmentId: body.appointmentId ? new Types.ObjectId(body.appointmentId as string) : undefined,
-      currency: (body.currency as string) ?? 'EGP',
+      doctorId: new Types.ObjectId(dto.doctorId),
+      appointmentId: dto.appointmentId ? new Types.ObjectId(dto.appointmentId) : undefined,
+      currency: dto.currency ?? 'EGP',
     });
     return this.toothProcedureModel.findById(procedure._id).populate('doctorId', 'name nameAr').lean();
   }

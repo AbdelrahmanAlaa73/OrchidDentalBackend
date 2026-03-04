@@ -1,6 +1,9 @@
 import { Controller, Get, Post, Body, Patch, Param, Query, Delete, UseGuards, ForbiddenException } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { InvoicesService } from './invoices.service';
+import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { UpdateInvoiceDto } from './dto/update-invoice.dto';
+import { AddPaymentDto } from './dto/add-payment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -29,22 +32,23 @@ export class InvoicesController {
 
   @Post()
   @ApiOperation({ summary: 'Create an invoice' })
-  create(@Body() body: Record<string, unknown>, @CurrentUser() user?: CurrentUserPayload) {
+  @ApiBody({ type: CreateInvoiceDto })
+  create(@Body() dto: CreateInvoiceDto, @CurrentUser() user?: CurrentUserPayload) {
     if (user?.role === UserRole.Doctor && user?.doctorId) {
-      const bodyDoctorId = body.doctorId?.toString?.() ?? body.doctorId;
-      if (bodyDoctorId && bodyDoctorId !== user.doctorId) {
+      if (dto.doctorId && dto.doctorId !== user.doctorId) {
         throw new ForbiddenException('Doctors can only create invoices for themselves');
       }
-      body = { ...body, doctorId: user.doctorId };
+      dto = { ...dto, doctorId: user.doctorId };
     }
-    return this.invoicesService.create(body as Parameters<InvoicesService['create']>[0]);
+    return this.invoicesService.create(dto);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update invoice by ID' })
-  update(@Param('id') id: string, @Body() body: Record<string, unknown>, @CurrentUser() user?: CurrentUserPayload) {
+  @ApiBody({ type: UpdateInvoiceDto })
+  update(@Param('id') id: string, @Body() dto: UpdateInvoiceDto, @CurrentUser() user?: CurrentUserPayload) {
     const doctorIdFilter = user?.role === UserRole.Doctor ? user?.doctorId : undefined;
-    return this.invoicesService.update(id, body, doctorIdFilter);
+    return this.invoicesService.update(id, dto, doctorIdFilter);
   }
 
   @Delete(':id')
@@ -63,8 +67,9 @@ export class InvoicesController {
 
   @Post(':id/payments')
   @ApiOperation({ summary: 'Add payment to invoice' })
-  addPayment(@Param('id') id: string, @Body() body: { amount: number; method?: string }, @CurrentUser() user?: CurrentUserPayload) {
+  @ApiBody({ type: AddPaymentDto })
+  addPayment(@Param('id') id: string, @Body() dto: AddPaymentDto, @CurrentUser() user?: CurrentUserPayload) {
     const doctorIdFilter = user?.role === UserRole.Doctor ? user?.doctorId : undefined;
-    return this.invoicesService.addPayment(id, body.amount, body.method ?? 'cash', doctorIdFilter);
+    return this.invoicesService.addPayment(id, dto.amount, dto.method ?? 'cash', doctorIdFilter);
   }
 }

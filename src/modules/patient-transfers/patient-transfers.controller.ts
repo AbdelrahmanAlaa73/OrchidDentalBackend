@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Body, Param, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { PatientTransfersService } from './patient-transfers.service';
+import { TransferPatientDto } from './dto/transfer-patient.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -17,12 +18,13 @@ export class PatientTransfersController {
 
   @Post(':id/transfer')
   @ApiOperation({ summary: 'Transfer patient to another doctor' })
+  @ApiBody({ type: TransferPatientDto })
   transfer(
     @Param('id') id: string,
-    @Body() body: { toDoctorId: string; reason: string; notes?: string },
+    @Body() dto: TransferPatientDto,
     @CurrentUser() user: { id: string },
   ) {
-    return this.patientTransfersService.transfer(id, body.toDoctorId, body.reason, body.notes, user.id);
+    return this.patientTransfersService.transfer(id, dto.toDoctorId, dto.reason, dto.notes, user.id);
   }
 
   @Get(':id/transfers')
