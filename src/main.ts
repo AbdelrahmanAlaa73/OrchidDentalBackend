@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
 import { setupSwagger } from './config/swagger';
 
-async function bootstrap() {
+async function bootstrap( ) {
   const app = await NestFactory.create(AppModule);
   app.useGlobalPipes(
     new ValidationPipe({
@@ -19,8 +19,12 @@ async function bootstrap() {
   setupSwagger(app);
   const port = process.env.PORT || 5000;
   await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}`);
-  console.log(`Swagger docs available at: http://localhost:${port}/api/docs`);
+  console.log(`Application is running on: http://localhost:${port}` );
+  console.log(`Swagger docs available at: http://localhost:${port}/api/docs` );
+  
+  // 👇 التعديل الأول: إضافة هذا السطر
+  return app; 
 }
 
-bootstrap();
+// 👇 التعديل الثاني: تغيير هذا السطر
+export default bootstrap();
