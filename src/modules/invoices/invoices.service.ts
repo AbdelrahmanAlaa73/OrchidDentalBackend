@@ -76,7 +76,21 @@ export class InvoicesService {
   }
 
   async create(body: CreateInvoiceDto) {
-    const items = body.items.map((i) => ({ ...i, total: i.quantity * i.unitPrice }));
+    const qty = (i: { quantity?: number }) => (i.quantity != null && i.quantity >= 1 ? i.quantity : 1);
+    const items = body.items.map((i) => {
+      const quantity = qty(i);
+      const total = quantity * i.unitPrice;
+      return {
+        description: i.description ?? i.procedure,
+        descriptionAr: i.descriptionAr ?? i.procedureAr,
+        procedure: i.procedure,
+        procedureAr: i.procedureAr,
+        quantity,
+        unitPrice: i.unitPrice,
+        total,
+        toothNumber: i.toothNumber,
+      };
+    });
     const subtotal = items.reduce((s, i) => s + i.total, 0);
     const discount = body.discount ?? 0;
     const discountType = body.discountType ?? DiscountType.Fixed;
@@ -120,7 +134,22 @@ export class InvoicesService {
     if (!invoice) throw new NotFoundException('Invoice not found');
     if (doctorIdFilter && !invoice.doctorId.equals(toObjectIdOrThrow(doctorIdFilter, 'doctorId'))) throw new ForbiddenException('Forbidden');
     if (body.items && Array.isArray(body.items)) {
-      const items = body.items.map((i) => ({ ...i, total: (i.quantity ?? 1) * (i.unitPrice ?? 0) }));
+      const quantity = (i: { quantity?: number }) => (i.quantity != null && i.quantity >= 1 ? i.quantity : 1);
+      const items = body.items.map((i) => {
+        const q = quantity(i);
+        const up = i.unitPrice ?? 0;
+        const total = q * up;
+        return {
+          description: i.description ?? i.procedure,
+          descriptionAr: i.descriptionAr ?? i.procedureAr,
+          procedure: i.procedure,
+          procedureAr: i.procedureAr,
+          quantity: q,
+          unitPrice: up,
+          total,
+          toothNumber: i.toothNumber,
+        };
+      });
       invoice.items = items as never;
       invoice.subtotal = items.reduce((s, i) => s + i.total, 0);
       invoice.total = applyDiscount(invoice.subtotal, invoice.discount, invoice.discountType);

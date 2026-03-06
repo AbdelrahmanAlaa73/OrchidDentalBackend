@@ -8,11 +8,11 @@ function validateFDITooth(v: number): boolean {
 
 @Schema({ _id: true })
 export class InvoiceItem extends Document {
-  @Prop({ required: true })
-  description: string;
+  @Prop()
+  description?: string;
 
-  @Prop({ required: true })
-  descriptionAr: string;
+  @Prop()
+  descriptionAr?: string;
 
   @Prop({ required: true })
   procedure: string;
@@ -20,14 +20,14 @@ export class InvoiceItem extends Document {
   @Prop({ required: true })
   procedureAr: string;
 
-  @Prop({ required: true, min: 1 })
+  @Prop({ min: 1, default: 1 })
   quantity: number;
 
   @Prop({ required: true, min: 0 })
   unitPrice: number;
 
-  @Prop({ required: true, min: 0 })
-  total: number;
+  @Prop({ min: 0 })
+  total?: number;
 
   @Prop({ validate: { validator: validateFDITooth, message: 'Invalid FDI tooth number' } })
   toothNumber?: number;

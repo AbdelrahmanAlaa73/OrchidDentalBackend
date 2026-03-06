@@ -28,6 +28,12 @@ export class Doctor extends Document {
   @Prop({ required: true, enum: Object.values(DoctorRole) })
   role: DoctorRole;
 
+  @Prop({ default: 20, min: 0, max: 100 })
+  clinicSharePercent: number;
+
+  @Prop({ default: 80, min: 0, max: 100 })
+  doctorSharePercent: number;
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   userId?: Types.ObjectId;
 }

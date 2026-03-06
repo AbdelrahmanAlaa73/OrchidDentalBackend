@@ -7,6 +7,7 @@ import { Expense } from '../expenses/schemas/expense.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
 import { ProcedurePricing } from '../procedure-pricing/schemas/procedure-pricing.schema';
 import { Appointment } from '../appointments/schemas/appointment.schema';
+import { Doctor } from '../doctors/schemas/doctor.schema';
 
 const PERIOD = {
   DAILY: 'daily',
@@ -50,6 +51,7 @@ export class ReportsService {
     @InjectModel(Invoice.name) private invoiceModel: Model<Invoice>,
     @InjectModel(ProcedurePricing.name) private procedurePricingModel: Model<ProcedurePricing>,
     @InjectModel(Appointment.name) private appointmentModel: Model<Appointment>,
+    @InjectModel(Doctor.name) private doctorModel: Model<Doctor>,
   ) {}
 
   /** Resolves start/end date from query (period or explicit dates). Defaults to last month. */
@@ -105,7 +107,7 @@ export class ReportsService {
     const dayEnd = new Date(end + 'T23:59:59.999Z');
     const doctorIdFilter = query.doctorId ? { doctorId: toObjectIdOrThrow(query.doctorId, 'doctorId') } : {};
 
-    const [invoices, payments, expenses, pricingList, appointmentsByDate] = await Promise.all([
+    const [invoices, payments, expenses, doctors, appointmentsByDate] = await Promise.all([
       this.invoiceModel
         .find({ createdAt: { $gte: dayStart, $lte: dayEnd }, ...doctorIdFilter })
         .lean(),
@@ -113,7 +115,7 @@ export class ReportsService {
         .find({ paidDate: { $gte: start, $lte: end }, ...doctorIdFilter })
         .lean(),
       this.expenseModel.find({ date: { $gte: start, $lte: end } }).lean(),
-      this.procedurePricingModel.find().lean(),
+      this.doctorModel.find().select('_id clinicSharePercent doctorSharePercent').lean(),
       this.appointmentModel.aggregate<{ _id: string; count: number }>([
         { $match: { date: { $gte: start, $lte: end }, ...doctorIdFilter } },
         { $group: { _id: '$date', count: { $sum: 1 } } },
@@ -124,21 +126,26 @@ export class ReportsService {
     const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
-    const pricingMap = new Map(
-      pricingList.map((p) => [p.procedure, { doctorPercent: p.doctorPercent, clinicPercent: p.clinicPercent }]),
+    const doctorPercentMap = new Map(
+      doctors.map((d) => [
+        (d._id as unknown as string).toString(),
+        {
+          doctorPercent: (d as { doctorSharePercent?: number }).doctorSharePercent ?? 80,
+          clinicPercent: (d as { clinicSharePercent?: number }).clinicSharePercent ?? 20,
+        },
+      ]),
     );
 
     let doctorShare = 0;
     let clinicShare = 0;
     const procedureBreakdown: Record<string, BreakdownItem> = {};
     for (const inv of invoices) {
+      const doctorIdStr = String(inv.doctorId);
+      const pricing = doctorPercentMap.get(doctorIdStr) ?? { doctorPercent: 80, clinicPercent: 20 };
       for (const item of inv.items ?? []) {
         const total = item.total ?? 0;
-        const pricing = pricingMap.get(item.procedure);
-        if (pricing) {
-          doctorShare += (total * pricing.doctorPercent) / 100;
-          clinicShare += (total * pricing.clinicPercent) / 100;
-        }
+        doctorShare += (total * pricing.doctorPercent) / 100;
+        clinicShare += (total * pricing.clinicPercent) / 100;
         const key = item.procedure;
         if (!procedureBreakdown[key]) procedureBreakdown[key] = { count: 0, totalAmount: 0 };
         procedureBreakdown[key].count += item.quantity ?? 1;

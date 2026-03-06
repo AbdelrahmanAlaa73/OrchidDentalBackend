@@ -26,11 +26,6 @@ export class CreatePatientDto {
   @Max(150)
   age?: number;
 
-  @ApiPropertyOptional()
-  @IsOptional()
-  @IsString()
-  email?: string;
-
   @ApiPropertyOptional({ example: '1990-01-15' })
   @IsOptional()
   @IsString()

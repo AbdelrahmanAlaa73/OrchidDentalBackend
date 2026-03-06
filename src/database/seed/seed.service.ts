@@ -17,22 +17,22 @@ const WORKING_HOURS: Record<string, { open: string; close: string; isOpen: boole
 };
 
 const SEED_DOCTORS = [
-  { name: 'Dr. Ahmed Hassan', nameAr: 'د. أحمد حسن', specialty: 'General Dentistry', specialtyAr: 'طب الأسنان العام', color: DoctorColor.Orchid, isOwner: true, role: DoctorRole.Owner },
-  { name: 'Dr. Sara Mohamed', nameAr: 'د. سارة محمد', specialty: 'Orthodontics', specialtyAr: 'تقويم الأسنان', color: DoctorColor.Emerald, isOwner: false, role: DoctorRole.Doctor },
-  { name: 'Dr. Omar Khalil', nameAr: 'د. عمر خليل', specialty: 'Oral Surgery', specialtyAr: 'جراحة الفم', color: DoctorColor.Amber, isOwner: false, role: DoctorRole.Doctor },
+  { name: 'Dr. Ahmed Hassan', nameAr: 'د. أحمد حسن', specialty: 'General Dentistry', specialtyAr: 'طب الأسنان العام', color: DoctorColor.Orchid, isOwner: true, role: DoctorRole.Owner, clinicSharePercent: 20, doctorSharePercent: 80 },
+  { name: 'Dr. Sara Mohamed', nameAr: 'د. سارة محمد', specialty: 'Orthodontics', specialtyAr: 'تقويم الأسنان', color: DoctorColor.Emerald, isOwner: false, role: DoctorRole.Doctor, clinicSharePercent: 20, doctorSharePercent: 80 },
+  { name: 'Dr. Omar Khalil', nameAr: 'د. عمر خليل', specialty: 'Oral Surgery', specialtyAr: 'جراحة الفم', color: DoctorColor.Amber, isOwner: false, role: DoctorRole.Doctor, clinicSharePercent: 20, doctorSharePercent: 80 },
 ];
 
 const PROCEDURE_PRICINGS = [
-  { procedure: 'Consultation', procedureAr: 'استشارة', basePrice: 200, doctorPercent: 100, clinicPercent: 0, maxDiscount: 10 },
-  { procedure: 'Scaling & Polishing', procedureAr: 'تنظيف وتلميع', basePrice: 800, doctorPercent: 70, clinicPercent: 30, maxDiscount: 15 },
-  { procedure: 'Composite Filling', procedureAr: 'حشو مركب', basePrice: 500, doctorPercent: 65, clinicPercent: 35, maxDiscount: 10 },
-  { procedure: 'Root Canal Treatment', procedureAr: 'علاج الجذر', basePrice: 1500, doctorPercent: 70, clinicPercent: 30, maxDiscount: 5 },
-  { procedure: 'Crown (Zirconia)', procedureAr: 'تاج زركونيا', basePrice: 2500, doctorPercent: 60, clinicPercent: 40, maxDiscount: 10 },
-  { procedure: 'Extraction', procedureAr: 'خلع', basePrice: 400, doctorPercent: 80, clinicPercent: 20, maxDiscount: 0 },
-  { procedure: 'Implant', procedureAr: 'زراعة', basePrice: 8000, doctorPercent: 50, clinicPercent: 50, maxDiscount: 5 },
-  { procedure: 'Braces (Full)', procedureAr: 'تقويم كامل', basePrice: 15000, doctorPercent: 60, clinicPercent: 40, maxDiscount: 10 },
-  { procedure: 'Braces Adjustment', procedureAr: 'ضبط تقويم', basePrice: 600, doctorPercent: 70, clinicPercent: 30, maxDiscount: 0 },
-  { procedure: 'Teeth Whitening', procedureAr: 'تبييض الأسنان', basePrice: 2000, doctorPercent: 65, clinicPercent: 35, maxDiscount: 15 },
+  { procedure: 'Consultation', procedureAr: 'استشارة', basePrice: 200 },
+  { procedure: 'Scaling & Polishing', procedureAr: 'تنظيف وتلميع', basePrice: 800 },
+  { procedure: 'Composite Filling', procedureAr: 'حشو مركب', basePrice: 500 },
+  { procedure: 'Root Canal Treatment', procedureAr: 'علاج الجذر', basePrice: 1500 },
+  { procedure: 'Crown (Zirconia)', procedureAr: 'تاج زركونيا', basePrice: 2500 },
+  { procedure: 'Extraction', procedureAr: 'خلع', basePrice: 400 },
+  { procedure: 'Implant', procedureAr: 'زراعة', basePrice: 8000 },
+  { procedure: 'Braces (Full)', procedureAr: 'تقويم كامل', basePrice: 15000 },
+  { procedure: 'Braces Adjustment', procedureAr: 'ضبط تقويم', basePrice: 600 },
+  { procedure: 'Teeth Whitening', procedureAr: 'تبييض الأسنان', basePrice: 2000 },
 ];
 
 @Injectable()
@@ -57,7 +57,7 @@ export class SeedService implements OnModuleInit {
         phone: '',
         email: '',
         workingHours: WORKING_HOURS,
-        appointmentDurations: [15, 30, 45, 60, 90],
+        appointmentDurations: [15, 30, 45, 60, 90, 120],
         sterilizationBuffer: 10,
         clinicSharePercentage: 20,
         currency: 'EGP',

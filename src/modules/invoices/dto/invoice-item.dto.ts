@@ -2,13 +2,15 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNumber, IsOptional, Min } from 'class-validator';
 
 export class InvoiceItemDto {
-  @ApiProperty({ example: 'Consultation fee' })
+  @ApiPropertyOptional({ example: 'Consultation fee' })
+  @IsOptional()
   @IsString()
-  description: string;
+  description?: string;
 
-  @ApiProperty({ example: 'رسوم الاستشارة' })
+  @ApiPropertyOptional({ example: 'رسوم الاستشارة' })
+  @IsOptional()
   @IsString()
-  descriptionAr: string;
+  descriptionAr?: string;
 
   @ApiProperty({ example: 'Consultation' })
   @IsString()
@@ -18,10 +20,11 @@ export class InvoiceItemDto {
   @IsString()
   procedureAr: string;
 
-  @ApiProperty({ example: 1, minimum: 1 })
+  @ApiPropertyOptional({ example: 1, minimum: 1, default: 1 })
+  @IsOptional()
   @IsNumber()
   @Min(1)
-  quantity: number;
+  quantity?: number;
 
   @ApiProperty({ example: 200, minimum: 0 })
   @IsNumber()

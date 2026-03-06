@@ -35,7 +35,7 @@ export class ClinicSettings extends Document {
   @Prop({ type: Map, of: WorkingHoursDaySchema })
   workingHours: Map<string, WorkingHoursDay>;
 
-  @Prop({ type: [Number], default: [15, 30, 45, 60, 90] })
+  @Prop({ type: [Number], default: [15, 30, 45, 60, 90, 120] })
   appointmentDurations: number[];
 
   @Prop({ default: 0, min: 0 })
