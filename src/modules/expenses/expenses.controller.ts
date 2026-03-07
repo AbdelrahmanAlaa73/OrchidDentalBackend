@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { ExpenseFilterQueryDto } from './dto/expense-filter-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -19,14 +20,9 @@ export class ExpensesController {
 
   @Get()
   @ApiOperation({ summary: 'List expenses with optional filters' })
-  findAll(
-    @Query('date') date?: string,
-    @Query('createdBy') createdBy?: string,
-    @Query('category') category?: string,
-    @CurrentUser() user?: CurrentUserPayload,
-  ) {
+  findAll(@Query() query: ExpenseFilterQueryDto, @CurrentUser() user?: CurrentUserPayload) {
     const userId = (user?.role === UserRole.Doctor || user?.role === UserRole.Assistant) ? user?.id : undefined;
-    return this.expensesService.findAll({ date, createdBy, category }, userId);
+    return this.expensesService.findAll(query, userId);
   }
 
   @Post()

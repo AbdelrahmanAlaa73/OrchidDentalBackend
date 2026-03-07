@@ -4,6 +4,7 @@ import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { AddPaymentDto } from './dto/add-payment.dto';
+import { InvoiceFilterQueryDto } from './dto/invoice-filter-query.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -20,14 +21,9 @@ export class InvoicesController {
 
   @Get()
   @ApiOperation({ summary: 'List invoices with optional filters' })
-  findAll(
-    @Query('patientId') patientId?: string,
-    @Query('doctorId') doctorId?: string,
-    @Query('status') status?: string,
-    @CurrentUser() user?: CurrentUserPayload,
-  ) {
+  findAll(@Query() query: InvoiceFilterQueryDto, @CurrentUser() user?: CurrentUserPayload) {
     const doctorIdFilter = user?.role === UserRole.Doctor ? user?.doctorId : undefined;
-    return this.invoicesService.findAll({ patientId, doctorId, status }, doctorIdFilter);
+    return this.invoicesService.findAll(query, doctorIdFilter);
   }
 
   @Post()
