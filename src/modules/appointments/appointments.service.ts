@@ -95,6 +95,7 @@ export class AppointmentsService {
     if (dto.notes != null) appointment.notes = dto.notes;
     if (dto.sterilizationBuffer != null) appointment.sterilizationBuffer = dto.sterilizationBuffer;
     if (dto.toothNumber != null) appointment.toothNumber = dto.toothNumber;
+    if (dto.status != null) appointment.status = dto.status;
     await appointment.save();
     return this.appointmentModel.findById(appointmentId).populate('patientId', 'name nameAr phone').populate('doctorId', 'name nameAr color').lean();
   }
