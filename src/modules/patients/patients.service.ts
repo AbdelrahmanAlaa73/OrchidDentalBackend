@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
@@ -104,5 +104,25 @@ export class PatientsService {
     const patient = await this.patientModel.findByIdAndUpdate(patientId, { $set: update }, { new: true }).lean();
     if (!patient) throw new NotFoundException('Patient not found');
     return patient;
+  }
+
+  async remove(id: string) {
+    const patientId = toObjectIdOrThrow(id, 'id');
+    const patient = await this.patientModel.findById(patientId);
+    if (!patient) throw new NotFoundException('Patient not found');
+    const [appointmentsCount, invoicesCount] = await Promise.all([
+      this.appointmentModel.countDocuments({ patientId }),
+      this.invoiceModel.countDocuments({ patientId }),
+    ]);
+    if (appointmentsCount > 0 || invoicesCount > 0) {
+      throw new ConflictException(
+        'Cannot delete patient with existing appointments or invoices. Remove or reassign them first.',
+      );
+    }
+    await Promise.all([
+      this.toothProcedureModel.deleteMany({ patientId }),
+      this.medicalAlertModel.deleteMany({ patientId }),
+    ]);
+    await this.patientModel.findByIdAndDelete(patientId);
   }
 }

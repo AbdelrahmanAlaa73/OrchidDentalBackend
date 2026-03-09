@@ -6,6 +6,7 @@
     "build": "nest build",
     "start": "node dist/main",
     "start:dev": "nest start --watch",
+    "dev": "nodemon",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
     "seed": "echo Seed runs automatically on app startup when DB is empty"
@@ -35,6 +36,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/node": "^20.10.5",
     "@types/passport-jwt": "^4.0.0",
+    "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }

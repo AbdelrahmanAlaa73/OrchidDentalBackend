@@ -7,7 +7,7 @@ import { UpdateProcedurePricingDto } from './dto/update-procedure-pricing.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../../enums';
+import { UserRole, ProcedureCategory } from '../../enums';
 
 @ApiTags('Procedure Pricing')
 @ApiBearerAuth('JWT-auth')
@@ -20,6 +20,12 @@ export class ProcedurePricingController {
   @ApiOperation({ summary: 'List all procedure prices' })
   findAll() {
     return this.procedurePricingService.findAll();
+  }
+
+  @Get('types')
+  @ApiOperation({ summary: 'Get static procedure types (categories)' })
+  getProcedureTypes() {
+    return { procedureTypes: Object.values(ProcedureCategory) };
   }
 
   @Get(':id')

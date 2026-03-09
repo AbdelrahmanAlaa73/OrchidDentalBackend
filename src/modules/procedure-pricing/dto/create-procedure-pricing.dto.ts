@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsNumber, IsOptional, IsEnum, Min } from 'class-validator';
-import { ToothProcedureType } from '../../../enums';
+import { ToothProcedureType, ProcedureCategory } from '../../../enums';
 
 export class CreateProcedurePricingDto {
   @ApiProperty({ example: 'Consultation' })
@@ -20,4 +20,12 @@ export class CreateProcedurePricingDto {
   @IsOptional()
   @IsEnum(ToothProcedureType)
   type?: ToothProcedureType;
+
+  @ApiPropertyOptional({
+    enum: ProcedureCategory,
+    description: 'Static procedure type: diagnostic, preventive, restorative, endodontic, prosthetic, surgical, orthodontic, cosmetic, other',
+  })
+  @IsOptional()
+  @IsEnum(ProcedureCategory)
+  procedureType?: ProcedureCategory;
 }

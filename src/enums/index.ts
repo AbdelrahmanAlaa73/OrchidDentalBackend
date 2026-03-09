@@ -95,3 +95,15 @@ export enum ToothProcedureType {
   Cleaning = 'cleaning',
   Whitening = 'whitening',
 }
+
+export enum ProcedureCategory {
+  Diagnostic = 'diagnostic',
+  Preventive = 'preventive',
+  Restorative = 'restorative',
+  Endodontic = 'endodontic',
+  Prosthetic = 'prosthetic',
+  Surgical = 'surgical',
+  Orthodontic = 'orthodontic',
+  Cosmetic = 'cosmetic',
+  Other = 'other',
+}

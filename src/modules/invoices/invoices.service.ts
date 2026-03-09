@@ -4,6 +4,7 @@ import { Model, Types } from 'mongoose';
 import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
 import { Invoice } from './schemas/invoice.schema';
 import { InvoicePayment } from './schemas/invoice-payment.schema';
+import { Expense } from '../expenses/schemas/expense.schema';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoiceStatus, DiscountType, PaymentMethod } from '../../enums';
@@ -28,9 +29,22 @@ export class InvoicesService {
   constructor(
     @InjectModel(Invoice.name) private invoiceModel: Model<Invoice>,
     @InjectModel(InvoicePayment.name) private paymentModel: Model<InvoicePayment>,
+    @InjectModel(Expense.name) private expenseModel: Model<Expense>,
   ) {}
 
-  async findAll(query: { patientId?: string; doctorId?: string; status?: string; includePayments?: boolean }, doctorIdFilter?: string) {
+  async findAll(
+    query: {
+      patientId?: string;
+      doctorId?: string;
+      status?: string;
+      includePayments?: boolean;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+    },
+    doctorIdFilter?: string,
+  ) {
     const filter: Record<string, unknown> = {};
     const patientId = toObjectIdOrUndefined(query.patientId);
     if (patientId) filter.patientId = patientId;
@@ -38,12 +52,78 @@ export class InvoicesService {
     if (doctorId) filter.doctorId = doctorId;
     if (query.status) filter.status = query.status;
     if (doctorIdFilter) filter.doctorId = toObjectIdOrThrow(doctorIdFilter, 'doctorId');
-    const invoices = await this.invoiceModel
-      .find(filter)
-      .populate('patientId', 'name nameAr phone')
-      .populate('doctorId', 'name nameAr color')
-      .sort({ createdAt: -1 })
-      .lean();
+    if (query.startDate || query.endDate) {
+      const start = query.startDate ? new Date(query.startDate + 'T00:00:00.000Z') : undefined;
+      const end = query.endDate ? new Date(query.endDate + 'T23:59:59.999Z') : undefined;
+      filter.createdAt = {};
+      if (start) (filter.createdAt as Record<string, Date>).$gte = start;
+      if (end) (filter.createdAt as Record<string, Date>).$lte = end;
+    }
+    const page = Math.max(1, query.page ?? 1);
+    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
+    const skip = (page - 1) * limit;
+
+    const aggFilter = { ...filter };
+    const [invoices, total, aggResult, totalExpenses] = await Promise.all([
+      this.invoiceModel
+        .find(filter)
+        .populate('patientId', 'name nameAr phone')
+        .populate('doctorId', 'name nameAr color')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.invoiceModel.countDocuments(filter),
+      this.invoiceModel
+        .aggregate<{
+          totalRevenue: number;
+          totalCollected: number;
+          pendingBalance: number;
+          totalDiscounts: number;
+          completedInvoicesCount: number;
+          pendingInvoicesCount: number;
+        }>([
+          { $match: aggFilter },
+          {
+            $group: {
+              _id: null,
+              totalRevenue: { $sum: '$total' },
+              totalCollected: { $sum: '$paid' },
+              pendingBalance: { $sum: '$remaining' },
+              totalDiscounts: { $sum: { $subtract: ['$subtotal', '$total'] } },
+              completedInvoicesCount: { $sum: { $cond: [{ $eq: ['$status', InvoiceStatus.Paid] }, 1, 0] } },
+              pendingInvoicesCount: {
+                $sum: { $cond: [{ $in: ['$status', [InvoiceStatus.Partial, InvoiceStatus.Unpaid]] }, 1, 0] },
+              },
+            },
+          },
+        ])
+        .then((r) => r[0]),
+      query.startDate && query.endDate
+        ? this.expenseModel
+            .find({
+              $expr: {
+                $and: [
+                  { $gte: [{ $substr: [{ $ifNull: ['$date', ''] }, 0, 10] }, query.startDate!] },
+                  { $lte: [{ $substr: [{ $ifNull: ['$date', ''] }, 0, 10] }, query.endDate!] },
+                ],
+              },
+            })
+            .lean()
+            .then((expenses) => expenses.reduce((sum, e) => sum + e.amount, 0))
+        : Promise.resolve(0),
+    ]);
+
+    const agg = aggResult ?? {
+      totalRevenue: 0,
+      totalCollected: 0,
+      pendingBalance: 0,
+      totalDiscounts: 0,
+      completedInvoicesCount: 0,
+      pendingInvoicesCount: 0,
+    };
+
+    let items: unknown[] = invoices;
     if (query.includePayments && invoices.length > 0) {
       const ids = invoices.map((inv) => inv._id);
       const payments = await this.paymentModel.find({ invoiceId: { $in: ids } }).sort({ paidAt: 1 }).lean();
@@ -53,12 +133,28 @@ export class InvoicesService {
         acc[key].push(p);
         return acc;
       }, {} as Record<string, unknown[]>);
-      return invoices.map((inv) => ({
+      items = invoices.map((inv) => ({
         ...inv,
         payments: byInvoice[(inv._id as Types.ObjectId).toString()] ?? [],
       }));
     }
-    return invoices;
+
+    const result: Record<string, unknown> = {
+      items,
+      total,
+      page,
+      limit,
+      totalRevenue: agg.totalRevenue,
+      totalCollected: agg.totalCollected,
+      pendingBalance: agg.pendingBalance,
+      pendingInvoicesCount: agg.pendingInvoicesCount,
+      totalDiscounts: agg.totalDiscounts,
+      completedInvoicesCount: agg.completedInvoicesCount,
+    };
+    if (query.startDate && query.endDate) {
+      result.afterExpenses = agg.totalCollected - totalExpenses;
+    }
+    return result;
   }
 
   async findOne(id: string, doctorIdFilter?: string): Promise<Record<string, unknown>> {

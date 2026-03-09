@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Query, Delete, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
 import { ToothProceduresService } from '../tooth-procedures/tooth-procedures.service';
@@ -58,6 +58,12 @@ export class PatientsController {
   @ApiBody({ type: UpdatePatientDto })
   update(@Param('id') id: string, @Body() dto: UpdatePatientDto) {
     return this.patientsService.update(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete patient by ID (fails if patient has appointments or invoices)' })
+  async remove(@Param('id') id: string) {
+    await this.patientsService.remove(id);
   }
 
   @Get(':id/tooth-procedures')

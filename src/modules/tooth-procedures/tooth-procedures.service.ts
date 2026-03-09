@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
 import { ToothProcedure } from './schemas/tooth-procedure.schema';
 import { CreateToothProcedureDto } from './dto/create-tooth-procedure.dto';
+import { UpdateToothProcedureDto } from './dto/update-tooth-procedure.dto';
 
 @Injectable()
 export class ToothProceduresService {
@@ -36,6 +37,15 @@ export class ToothProceduresService {
       currency: dto.currency ?? 'EGP',
     });
     return this.toothProcedureModel.findById(procedure._id).populate('doctorId', 'name nameAr').lean();
+  }
+
+  async update(id: string, dto: UpdateToothProcedureDto) {
+    const idObj = toObjectIdOrThrow(id, 'id');
+    const procedure = await this.toothProcedureModel.findById(idObj);
+    if (!procedure) throw new NotFoundException('Tooth procedure not found');
+    if (dto.notes !== undefined) procedure.notes = dto.notes;
+    await procedure.save();
+    return this.toothProcedureModel.findById(idObj).populate('doctorId', 'name nameAr').lean();
   }
 
   async remove(id: string) {

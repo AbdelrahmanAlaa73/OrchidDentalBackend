@@ -35,6 +35,7 @@ export type RevenueReportResult = {
   clinicShare: number;
   procedureBreakdown: Array<BreakdownItem & { procedure: string }>;
   expenseBreakdown: Array<BreakdownItem & { category: string }>;
+  expenses: Array<Record<string, unknown>>;
   dailyBreakdown: Array<{
     date: string;
     revenue: number;
@@ -114,7 +115,16 @@ export class ReportsService {
       this.invoicePaymentModel
         .find({ paidDate: { $gte: start, $lte: end }, ...doctorIdFilter })
         .lean(),
-      this.expenseModel.find({ date: { $gte: start, $lte: end } }).lean(),
+      this.expenseModel
+        .find({
+          $expr: {
+            $and: [
+              { $gte: [{ $substr: [{ $ifNull: ['$date', ''] }, 0, 10] }, start] },
+              { $lte: [{ $substr: [{ $ifNull: ['$date', ''] }, 0, 10] }, end] },
+            ],
+          },
+        })
+        .lean(),
       this.doctorModel.find().select('_id clinicSharePercent doctorSharePercent').lean(),
       this.appointmentModel.aggregate<{ _id: string; count: number }>([
         { $match: { date: { $gte: start, $lte: end }, ...doctorIdFilter } },
@@ -163,7 +173,10 @@ export class ReportsService {
     const dailyRev: Record<string, number> = {};
     payments.forEach((p) => (dailyRev[p.paidDate] = (dailyRev[p.paidDate] ?? 0) + p.amount));
     const dailyExp: Record<string, number> = {};
-    expenses.forEach((e) => (dailyExp[e.date] = (dailyExp[e.date] ?? 0) + e.amount));
+    expenses.forEach((e) => {
+      const dateKey = typeof e.date === 'string' ? e.date.slice(0, 10) : '';
+      if (dateKey) dailyExp[dateKey] = (dailyExp[dateKey] ?? 0) + e.amount;
+    });
     const dailyApp: Record<string, number> = {};
     appointmentsByDate.forEach((a) => (dailyApp[a._id] = a.count));
 
@@ -187,6 +200,7 @@ export class ReportsService {
       clinicShare,
       procedureBreakdown: Object.entries(procedureBreakdown).map(([procedure, data]) => ({ procedure, ...data })),
       expenseBreakdown: Object.entries(expenseBreakdown).map(([category, data]) => ({ category, ...data })),
+      expenses: expenses as Array<Record<string, unknown>>,
       dailyBreakdown,
     };
   }

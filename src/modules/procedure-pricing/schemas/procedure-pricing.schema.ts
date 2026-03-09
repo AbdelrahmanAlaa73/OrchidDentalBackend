@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
-import { ToothProcedureType } from '../../../enums';
+import { ToothProcedureType, ProcedureCategory } from '../../../enums';
 
 @Schema({ timestamps: true })
 export class ProcedurePricing extends Document {
@@ -15,6 +15,9 @@ export class ProcedurePricing extends Document {
 
   @Prop({ enum: Object.values(ToothProcedureType) })
   type?: ToothProcedureType;
+
+  @Prop({ enum: Object.values(ProcedureCategory) })
+  procedureType?: ProcedureCategory;
 }
 
 export const ProcedurePricingSchema = SchemaFactory.createForClass(ProcedurePricing);
