@@ -24,15 +24,33 @@ export class PatientsService {
     const filter: Record<string, unknown> = {};
     const doctorId = toObjectIdOrUndefined(query.assignedDoctorId);
     if (doctorId) filter.assignedDoctorId = doctorId;
-    if (query.search?.trim()) filter.$text = { $search: query.search.trim() };
+
+    const searchTrimmed = query.search?.trim();
+    const SINGLE_LETTER_LIMIT = 20;
+
+    if (searchTrimmed) {
+      if (searchTrimmed.length === 1) {
+        const escaped = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(escaped, 'i');
+        filter.$or = [
+          { name: re },
+          { nameAr: re },
+          { phone: { $regex: escaped } },
+        ];
+      } else {
+        filter.$text = { $search: searchTrimmed };
+      }
+    }
+
     const page = Math.max(1, query.page || 1);
-    const limit = Math.min(100, Math.max(1, query.limit || 20));
-    const skip = (page - 1) * limit;
+    const effectiveLimit =
+      searchTrimmed?.length === 1 ? Math.min(SINGLE_LETTER_LIMIT, Math.max(1, query.limit || 20)) : Math.min(100, Math.max(1, query.limit || 20));
+    const skip = (page - 1) * effectiveLimit;
     const [items, total] = await Promise.all([
-      this.patientModel.find(filter).skip(skip).limit(limit).sort({ createdAt: -1 }).populate('assignedDoctorId', 'name nameAr specialty color').lean(),
+      this.patientModel.find(filter).skip(skip).limit(effectiveLimit).sort({ createdAt: -1 }).populate('assignedDoctorId', 'name nameAr specialty color').lean(),
       this.patientModel.countDocuments(filter),
     ]);
-    return { items, total, page, limit };
+    return { items, total, page, limit: effectiveLimit };
   }
 
   async create(dto: CreatePatientDto) {
@@ -72,7 +90,7 @@ export class PatientsService {
       if (!dentalTreatments[toothNum]) dentalTreatments[toothNum] = [];
       dentalTreatments[toothNum].push({
         id: tp._id != null ? String(tp._id) : undefined,
-        type: tp.type,
+        procedureType: tp.procedureType ?? tp.type,
         date: tp.date,
         appointmentId: tp.appointmentId != null ? String(tp.appointmentId) : undefined,
         notes: tp.notes,

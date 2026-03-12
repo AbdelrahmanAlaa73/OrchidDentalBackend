@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { toObjectIdOrThrow } from '../../common/utils/objectid';
+import { getWorkdayRange } from '../../common/utils/date-range.util';
 import { DailyCloseout } from './schemas/daily-closeout.schema';
 import { UpdateDailyCloseoutDto } from './dto/update-daily-closeout.dto';
 import { Invoice } from '../invoices/schemas/invoice.schema';
@@ -19,7 +21,14 @@ export class DailyCloseoutsService {
     @InjectModel(Invoice.name) private invoiceModel: Model<Invoice>,
     @InjectModel(InvoicePayment.name) private invoicePaymentModel: Model<InvoicePayment>,
     @InjectModel(Expense.name) private expenseModel: Model<Expense>,
+    private configService: ConfigService,
   ) {}
+
+  private getWorkdayBounds(date: string): { start: Date; end: Date } {
+    const tz = this.configService.get<string>('clinicTimezone') ?? 'Africa/Cairo';
+    const startHour = this.configService.get<number>('workdayStartHour') ?? 6;
+    return getWorkdayRange(date, tz, startHour);
+  }
 
   private paymentFilter(date: string, filter?: RoleFilter): Record<string, unknown> {
     const base: Record<string, unknown> = { paidDate: date };
@@ -52,13 +61,12 @@ export class DailyCloseoutsService {
     return { ...closeout, ...breakdown } as Record<string, unknown>;
   }
 
-  /** Preview payments and expenses for a date (for closeout UI). Includes dummy entries for invoices created that day with no payments. */
+  /** Preview payments and expenses for a date (for closeout UI). Uses 6AM–6AM workday in clinic timezone. Includes dummy entries for invoices created in that workday with no payments. */
   async getPreview(date: string, roleFilter?: RoleFilter) {
     const payments = await this.invoicePaymentModel.find(this.paymentFilter(date, roleFilter)).lean();
-    const dayStart = new Date(date + 'T00:00:00.000Z');
-    const dayEnd = new Date(date + 'T23:59:59.999Z');
+    const { start: dayStart, end: dayEnd } = this.getWorkdayBounds(date);
     const invoicesCreatedThatDay = await this.invoiceModel
-      .find({ createdAt: { $gte: dayStart, $lte: dayEnd } })
+      .find({ createdAt: { $gte: dayStart, $lt: dayEnd } })
       .select('_id')
       .lean();
     const paidInvoiceIds = new Set(payments.map((p) => (p.invoiceId as Types.ObjectId).toString()));

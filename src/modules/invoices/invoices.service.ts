@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { toObjectIdOrThrow, toObjectIdOrUndefined } from '../../common/utils/objectid';
+import { getWorkdayRangeFromDateRange } from '../../common/utils/date-range.util';
 import { Invoice } from './schemas/invoice.schema';
 import { InvoicePayment } from './schemas/invoice-payment.schema';
 import { Expense } from '../expenses/schemas/expense.schema';
@@ -30,6 +32,7 @@ export class InvoicesService {
     @InjectModel(Invoice.name) private invoiceModel: Model<Invoice>,
     @InjectModel(InvoicePayment.name) private paymentModel: Model<InvoicePayment>,
     @InjectModel(Expense.name) private expenseModel: Model<Expense>,
+    private configService: ConfigService,
   ) {}
 
   async findAll(
@@ -53,11 +56,12 @@ export class InvoicesService {
     if (query.status) filter.status = query.status;
     if (doctorIdFilter) filter.doctorId = toObjectIdOrThrow(doctorIdFilter, 'doctorId');
     if (query.startDate || query.endDate) {
-      const start = query.startDate ? new Date(query.startDate + 'T00:00:00.000Z') : undefined;
-      const end = query.endDate ? new Date(query.endDate + 'T23:59:59.999Z') : undefined;
-      filter.createdAt = {};
-      if (start) (filter.createdAt as Record<string, Date>).$gte = start;
-      if (end) (filter.createdAt as Record<string, Date>).$lte = end;
+      const startStr = query.startDate ?? query.endDate!;
+      const endStr = query.endDate ?? query.startDate!;
+      const tz = this.configService.get<string>('clinicTimezone') ?? 'Africa/Cairo';
+      const startHour = this.configService.get<number>('workdayStartHour') ?? 6;
+      const { start, end } = getWorkdayRangeFromDateRange(startStr, endStr, tz, startHour);
+      filter.createdAt = { $gte: start, $lt: end };
     }
     const page = Math.max(1, query.page ?? 1);
     const limit = Math.min(100, Math.max(1, query.limit ?? 20));

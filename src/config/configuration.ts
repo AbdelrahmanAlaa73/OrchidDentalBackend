@@ -6,6 +6,8 @@ export const configuration = () => ({
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   },
   bcryptRounds: parseInt(process.env.BCRYPT_ROUNDS || '10', 10),
+  clinicTimezone: process.env.CLINIC_TIMEZONE || 'Africa/Cairo',
+  workdayStartHour: parseInt(process.env.WORKDAY_START_HOUR || '6', 10),
 });
 
 export type ConfigurationType = ReturnType<typeof configuration>;

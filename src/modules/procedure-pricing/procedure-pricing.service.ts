@@ -9,7 +9,7 @@ type ProcedurePricingItem = {
   procedure: string;
   procedureAr: string;
   basePrice: number;
-  type?: string;
+  procedureType?: string;
 };
 
 @Injectable()

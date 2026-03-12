@@ -29,8 +29,10 @@ export class ToothProceduresService {
     if (dto.appointmentId && !appointmentId) {
       throw new BadRequestException('appointmentId must be a valid MongoDB ObjectId (24 hex characters)');
     }
+    const { procedureType, ...rest } = dto;
     const procedure = await this.toothProcedureModel.create({
-      ...dto,
+      ...rest,
+      procedureType,
       patientId: toObjectIdOrThrow(patientId, 'patientId'),
       doctorId: toObjectIdOrThrow(dto.doctorId, 'doctorId'),
       appointmentId,

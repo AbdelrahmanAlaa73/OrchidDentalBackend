@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { toObjectIdOrThrow } from '../../common/utils/objectid';
+import { getWorkdayRangeFromDateRange } from '../../common/utils/date-range.util';
 import { InvoicePayment } from '../invoices/schemas/invoice-payment.schema';
 import { Expense } from '../expenses/schemas/expense.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
@@ -53,7 +55,14 @@ export class ReportsService {
     @InjectModel(ProcedurePricing.name) private procedurePricingModel: Model<ProcedurePricing>,
     @InjectModel(Appointment.name) private appointmentModel: Model<Appointment>,
     @InjectModel(Doctor.name) private doctorModel: Model<Doctor>,
+    private configService: ConfigService,
   ) {}
+
+  private getWorkdayBounds(startDate: string, endDate: string): { start: Date; end: Date } {
+    const tz = this.configService.get<string>('clinicTimezone') ?? 'Africa/Cairo';
+    const startHour = this.configService.get<number>('workdayStartHour') ?? 6;
+    return getWorkdayRangeFromDateRange(startDate, endDate, tz, startHour);
+  }
 
   /** Resolves start/end date from query (period or explicit dates). Defaults to last month. */
   private resolveDateRange(query: RevenueReportQuery): { start: string; end: string } {
@@ -104,13 +113,12 @@ export class ReportsService {
 
   async getRevenueReport(query: RevenueReportQuery): Promise<RevenueReportResult> {
     const { start, end } = this.resolveDateRange(query);
-    const dayStart = new Date(start + 'T00:00:00.000Z');
-    const dayEnd = new Date(end + 'T23:59:59.999Z');
+    const { start: dayStart, end: dayEnd } = this.getWorkdayBounds(start, end);
     const doctorIdFilter = query.doctorId ? { doctorId: toObjectIdOrThrow(query.doctorId, 'doctorId') } : {};
 
     const [invoices, payments, expenses, doctors, appointmentsByDate] = await Promise.all([
       this.invoiceModel
-        .find({ createdAt: { $gte: dayStart, $lte: dayEnd }, ...doctorIdFilter })
+        .find({ createdAt: { $gte: dayStart, $lt: dayEnd }, ...doctorIdFilter })
         .lean(),
       this.invoicePaymentModel
         .find({ paidDate: { $gte: start, $lte: end }, ...doctorIdFilter })
