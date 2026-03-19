@@ -20,6 +20,12 @@ export class UpdateDailyCloseoutDto {
   @Min(0)
   transferCollected?: number;
 
+  @ApiPropertyOptional({ description: 'Vodafone Cash collected amount' })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  vodafoneCashCollected?: number;
+
   @ApiPropertyOptional({ description: 'Total collected amount' })
   @IsOptional()
   @IsNumber()

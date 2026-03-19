@@ -65,9 +65,13 @@ export class DailyCloseoutsService {
   async getPreview(date: string, roleFilter?: RoleFilter) {
     const payments = await this.invoicePaymentModel.find(this.paymentFilter(date, roleFilter)).lean();
     const { start: dayStart, end: dayEnd } = this.getWorkdayBounds(date);
+    const invoiceFilter: Record<string, unknown> = { createdAt: { $gte: dayStart, $lt: dayEnd } };
+    if (roleFilter?.role === UserRole.Doctor && roleFilter?.doctorId) {
+      invoiceFilter.doctorId = toObjectIdOrThrow(roleFilter.doctorId, 'doctorId');
+    }
     const invoicesCreatedThatDay = await this.invoiceModel
-      .find({ createdAt: { $gte: dayStart, $lt: dayEnd } })
-      .select('_id')
+      .find(invoiceFilter)
+      .select('_id total')
       .lean();
     const paidInvoiceIds = new Set(payments.map((p) => (p.invoiceId as Types.ObjectId).toString()));
     const dummyPayments = invoicesCreatedThatDay
@@ -84,20 +88,25 @@ export class DailyCloseoutsService {
         isDummy: true,
       }));
     const expenses = await this.expenseModel.find(this.expenseFilter(date, roleFilter)).lean();
-    let cashCollected = 0, cardCollected = 0, transferCollected = 0;
+    let cashCollected = 0, cardCollected = 0, transferCollected = 0, vodafoneCashCollected = 0;
     for (const p of payments) {
       if (p.method === PaymentMethod.Cash) cashCollected += p.amount;
       else if (p.method === PaymentMethod.Card) cardCollected += p.amount;
+      else if (p.method === PaymentMethod.VodafoneCash) vodafoneCashCollected += p.amount;
       else transferCollected += p.amount;
     }
-    const totalCollected = cashCollected + cardCollected + transferCollected;
+    const totalCollected = cashCollected + cardCollected + transferCollected + vodafoneCashCollected;
     const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+    const revenue = (invoicesCreatedThatDay as Array<{ total?: number }>).reduce((s, inv) => s + (inv.total ?? 0), 0);
     return {
+      date,
       payments: [...payments, ...dummyPayments],
       expenses,
+      revenue,
       cashCollected,
       cardCollected,
       transferCollected,
+      vodafoneCashCollected,
       totalCollected,
       totalExpenses,
       finalBalance: totalCollected - totalExpenses,
@@ -127,13 +136,19 @@ export class DailyCloseoutsService {
     if (dto.cashCollected !== undefined) closeout.cashCollected = dto.cashCollected;
     if (dto.cardCollected !== undefined) closeout.cardCollected = dto.cardCollected;
     if (dto.transferCollected !== undefined) closeout.transferCollected = dto.transferCollected;
+    if (dto.vodafoneCashCollected !== undefined) closeout.vodafoneCashCollected = dto.vodafoneCashCollected;
     if (dto.totalCollected !== undefined) closeout.totalCollected = dto.totalCollected;
     else if (
       dto.cashCollected !== undefined ||
       dto.cardCollected !== undefined ||
-      dto.transferCollected !== undefined
+      dto.transferCollected !== undefined ||
+      dto.vodafoneCashCollected !== undefined
     ) {
-      closeout.totalCollected = closeout.cashCollected + closeout.cardCollected + closeout.transferCollected;
+      closeout.totalCollected =
+        closeout.cashCollected +
+        closeout.cardCollected +
+        closeout.transferCollected +
+        (closeout.vodafoneCashCollected ?? 0);
     }
     if (dto.totalExpenses !== undefined) closeout.totalExpenses = dto.totalExpenses;
     if (dto.finalBalance !== undefined) closeout.finalBalance = dto.finalBalance;
@@ -146,13 +161,14 @@ export class DailyCloseoutsService {
     const existing = await this.dailyCloseoutModel.findOne({ date });
     if (existing) throw new ConflictException('A closeout already exists for this date');
     const payments = await this.invoicePaymentModel.find(this.paymentFilter(date, roleFilter));
-    let cashCollected = 0, cardCollected = 0, transferCollected = 0;
+    let cashCollected = 0, cardCollected = 0, transferCollected = 0, vodafoneCashCollected = 0;
     for (const p of payments) {
       if (p.method === PaymentMethod.Cash) cashCollected += p.amount;
       else if (p.method === PaymentMethod.Card) cardCollected += p.amount;
+      else if (p.method === PaymentMethod.VodafoneCash) vodafoneCashCollected += p.amount;
       else transferCollected += p.amount;
     }
-    const totalCollected = cashCollected + cardCollected + transferCollected;
+    const totalCollected = cashCollected + cardCollected + transferCollected + vodafoneCashCollected;
     const expenses = await this.expenseModel.find(this.expenseFilter(date, roleFilter));
     const expenseSnapshot = expenses.map((e) => ({
       expenseId: e._id,
@@ -169,6 +185,7 @@ export class DailyCloseoutsService {
       cashCollected,
       cardCollected,
       transferCollected,
+      vodafoneCashCollected,
       totalCollected,
       expenseSnapshot,
       totalExpenses,

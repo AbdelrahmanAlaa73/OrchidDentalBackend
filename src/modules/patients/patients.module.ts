@@ -9,6 +9,8 @@ import { ToothProcedure, ToothProcedureSchema } from '../tooth-procedures/schema
 import { MedicalAlert, MedicalAlertSchema } from '../medical-alerts/schemas/medical-alert.schema';
 import { ToothProceduresModule } from '../tooth-procedures/tooth-procedures.module';
 import { MedicalAlertsModule } from '../medical-alerts/medical-alerts.module';
+import { PatientNotesModule } from '../patient-notes/patient-notes.module';
+import { PrescriptionsModule } from '../prescriptions/prescriptions.module';
 
 @Module({
   imports: [
@@ -21,6 +23,8 @@ import { MedicalAlertsModule } from '../medical-alerts/medical-alerts.module';
     ]),
     ToothProceduresModule,
     MedicalAlertsModule,
+    PatientNotesModule,
+    PrescriptionsModule,
   ],
   controllers: [PatientsController],
   providers: [PatientsService],

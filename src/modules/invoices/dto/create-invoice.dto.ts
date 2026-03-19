@@ -36,7 +36,7 @@ export class CreateInvoiceDto {
   @Min(0)
   paid?: number;
 
-  @ApiPropertyOptional({ example: 'cash', description: 'cash | card | instapay' })
+  @ApiPropertyOptional({ example: 'cash', description: 'cash | card | vodafone_cash | instapay' })
   @IsOptional()
   @IsString()
   paymentMethod?: string;

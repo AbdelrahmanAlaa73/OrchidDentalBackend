@@ -39,6 +39,9 @@ export class DailyCloseout extends Document {
   transferCollected: number;
 
   @Prop({ required: true, min: 0, default: 0 })
+  vodafoneCashCollected: number;
+
+  @Prop({ required: true, min: 0, default: 0 })
   totalCollected: number;
 
   @Prop({ type: [ExpenseSnapshotSchema], default: [] })

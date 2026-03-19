@@ -9,6 +9,8 @@ import { Appointment } from '../appointments/schemas/appointment.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
 import { ToothProcedure } from '../tooth-procedures/schemas/tooth-procedure.schema';
 import { MedicalAlert } from '../medical-alerts/schemas/medical-alert.schema';
+import { PatientNotesService } from '../patient-notes/patient-notes.service';
+import { PrescriptionsService } from '../prescriptions/prescriptions.service';
 
 @Injectable()
 export class PatientsService {
@@ -18,7 +20,32 @@ export class PatientsService {
     @InjectModel(Invoice.name) private invoiceModel: Model<Invoice>,
     @InjectModel(ToothProcedure.name) private toothProcedureModel: Model<ToothProcedure>,
     @InjectModel(MedicalAlert.name) private medicalAlertModel: Model<MedicalAlert>,
+    private patientNotesService: PatientNotesService,
+    private prescriptionsService: PrescriptionsService,
   ) {}
+
+  /** Get patients with dateOfBirth set. Optional date (YYYY-MM-DD) filters to birthdays on that month-day. */
+  async findBirthdays(date?: string): Promise<Record<string, unknown>[]> {
+    const filter: Record<string, unknown> = { dateOfBirth: { $exists: true, $ne: '' } };
+    if (date?.trim()) {
+      const monthDay = date.length >= 10 ? date.slice(5, 10) : date; // YYYY-MM-DD -> MM-DD
+      filter.dateOfBirth = { $regex: new RegExp(`^\\d{4}-${monthDay}$`) };
+    }
+    const patients = await this.patientModel
+      .find(filter)
+      .select('_id name nameAr dateOfBirth phone assignedDoctorId')
+      .populate('assignedDoctorId', 'name nameAr')
+      .sort({ dateOfBirth: 1 })
+      .lean();
+    return patients.map((p) => ({
+      id: (p as { _id?: unknown })._id != null ? String((p as { _id: Types.ObjectId })._id) : undefined,
+      name: (p as { name?: string }).name,
+      nameAr: (p as { nameAr?: string }).nameAr,
+      dateOfBirth: (p as { dateOfBirth?: string }).dateOfBirth,
+      phone: (p as { phone?: string }).phone,
+      assignedDoctorId: (p as { assignedDoctorId?: unknown }).assignedDoctorId,
+    }));
+  }
 
   async findAll(query: { search?: string; assignedDoctorId?: string; page?: number; limit?: number }) {
     const filter: Record<string, unknown> = {};
@@ -140,6 +167,8 @@ export class PatientsService {
     await Promise.all([
       this.toothProcedureModel.deleteMany({ patientId }),
       this.medicalAlertModel.deleteMany({ patientId }),
+      this.patientNotesService.deleteByPatient(id),
+      this.prescriptionsService.deleteByPatient(id),
     ]);
     await this.patientModel.findByIdAndDelete(patientId);
   }

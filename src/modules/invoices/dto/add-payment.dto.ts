@@ -7,7 +7,7 @@ export class AddPaymentDto {
   @Min(0.01)
   amount: number;
 
-  @ApiPropertyOptional({ example: 'cash', description: 'cash | card | instapay' })
+  @ApiPropertyOptional({ example: 'cash', description: 'cash | card | vodafone_cash | instapay' })
   @IsOptional()
   @IsString()
   method?: string;

@@ -7,6 +7,7 @@ import { getWorkdayRangeFromDateRange } from '../../common/utils/date-range.util
 import { InvoicePayment } from '../invoices/schemas/invoice-payment.schema';
 import { Expense } from '../expenses/schemas/expense.schema';
 import { Invoice } from '../invoices/schemas/invoice.schema';
+import { PaymentMethod } from '../../enums';
 import { ProcedurePricing } from '../procedure-pricing/schemas/procedure-pricing.schema';
 import { Appointment } from '../appointments/schemas/appointment.schema';
 import { Doctor } from '../doctors/schemas/doctor.schema';
@@ -35,6 +36,12 @@ export type RevenueReportResult = {
   netRevenue: number;
   doctorShare: number;
   clinicShare: number;
+  collectedByPaymentMethod: {
+    cash: number;
+    card: number;
+    vodafoneCash: number;
+    instapay: number;
+  };
   procedureBreakdown: Array<BreakdownItem & { procedure: string }>;
   expenseBreakdown: Array<BreakdownItem & { category: string }>;
   expenses: Array<Record<string, unknown>>;
@@ -144,6 +151,19 @@ export class ReportsService {
     const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
+    const collectedByPaymentMethod = {
+      cash: 0,
+      card: 0,
+      vodafoneCash: 0,
+      instapay: 0,
+    };
+    for (const p of payments) {
+      if (p.method === PaymentMethod.Cash) collectedByPaymentMethod.cash += p.amount;
+      else if (p.method === PaymentMethod.Card) collectedByPaymentMethod.card += p.amount;
+      else if (p.method === PaymentMethod.VodafoneCash) collectedByPaymentMethod.vodafoneCash += p.amount;
+      else collectedByPaymentMethod.instapay += p.amount;
+    }
+
     const doctorPercentMap = new Map(
       doctors.map((d) => [
         (d._id as unknown as string).toString(),
@@ -206,6 +226,7 @@ export class ReportsService {
       netRevenue: totalCollected - totalExpenses,
       doctorShare,
       clinicShare,
+      collectedByPaymentMethod,
       procedureBreakdown: Object.entries(procedureBreakdown).map(([procedure, data]) => ({ procedure, ...data })),
       expenseBreakdown: Object.entries(expenseBreakdown).map(([category, data]) => ({ category, ...data })),
       expenses: expenses as Array<Record<string, unknown>>,
