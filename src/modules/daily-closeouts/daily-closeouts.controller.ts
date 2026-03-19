@@ -25,11 +25,16 @@ export class DailyCloseoutsController {
 
   @Get('preview/:date')
   @ApiOperation({ summary: 'Preview payments and expenses for a date (includes dummy entries for unpaid invoices created that day)' })
-  getPreview(@Param('date') date: string, @CurrentUser() user?: CurrentUserPayload) {
+  getPreview(
+    @Param('date') date: string,
+    @CurrentUser() user?: CurrentUserPayload,
+    @Query('paymentMethod') paymentMethod?: string,
+    @Query('method') method?: string,
+  ) {
     const roleFilter = user
       ? { role: user.role as UserRole, userId: user.id, doctorId: user.doctorId }
       : undefined;
-    return this.dailyCloseoutsService.getPreview(date, roleFilter);
+    return this.dailyCloseoutsService.getPreview(date, roleFilter, paymentMethod ?? method);
   }
 
   @Get(':date')
@@ -37,11 +42,13 @@ export class DailyCloseoutsController {
   getByDate(
     @Param('date') date: string,
     @CurrentUser() user?: CurrentUserPayload,
+    @Query('paymentMethod') paymentMethod?: string,
+    @Query('method') method?: string,
   ): Promise<Record<string, unknown>> {
     const roleFilter = user
       ? { role: user.role as UserRole, userId: user.id, doctorId: user.doctorId }
       : undefined;
-    return this.dailyCloseoutsService.getByDate(date, roleFilter);
+    return this.dailyCloseoutsService.getByDate(date, roleFilter, paymentMethod ?? method);
   }
 
   @Delete(':date')

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
@@ -49,21 +49,51 @@ export class DailyCloseoutsService {
     return base;
   }
 
+  private normalizePaymentMethod(method?: string): PaymentMethod | undefined {
+    if (!method) return undefined;
+    const normalized = method
+      .trim()
+      .toLowerCase()
+      .replace(/[\s_-]/g, ''); // cash|vodafonecash|instapay
+
+    if (normalized === 'cash') return PaymentMethod.Cash;
+    if (normalized === 'card') return PaymentMethod.Card;
+    if (normalized === 'instapay' || normalized === 'transfer') return PaymentMethod.Instapay;
+    if (
+      normalized === 'vodafonecash' ||
+      normalized === 'vodafonecase' ||
+      normalized === 'vodafonecashcase' // tolerate frontend typos
+    ) {
+      return PaymentMethod.VodafoneCash;
+    }
+    if (normalized === 'vodafonecash') return PaymentMethod.VodafoneCash;
+    if (normalized === 'vodafone') return PaymentMethod.VodafoneCash;
+    if (Object.values(PaymentMethod).includes(method.trim() as PaymentMethod)) {
+      // Allow exact enum values like 'vodafone_cash'
+      return method.trim() as PaymentMethod;
+    }
+    throw new BadRequestException('paymentMethod must be one of: cash, card, vodafone_cash, instapay');
+  }
+
   async findAll(date?: string) {
     const filter = date ? { date } : {};
     return this.dailyCloseoutModel.find(filter).populate('closedBy', 'name email').sort({ date: -1 }).lean();
   }
 
-  async getByDate(date: string, roleFilter?: RoleFilter): Promise<Record<string, unknown>> {
+  async getByDate(date: string, roleFilter?: RoleFilter, paymentMethod?: string): Promise<Record<string, unknown>> {
     const closeout = await this.dailyCloseoutModel.findOne({ date }).populate('closedBy', 'name email').lean();
     if (!closeout) throw new NotFoundException('Closeout not found for this date');
-    const breakdown = await this.getPreview(date, roleFilter);
+    const breakdown = await this.getPreview(date, roleFilter, paymentMethod);
     return { ...closeout, ...breakdown } as Record<string, unknown>;
   }
 
   /** Preview payments and expenses for a date (for closeout UI). Uses 6AM–6AM workday in clinic timezone. Includes dummy entries for invoices created in that workday with no payments. */
-  async getPreview(date: string, roleFilter?: RoleFilter) {
-    const payments = await this.invoicePaymentModel.find(this.paymentFilter(date, roleFilter)).lean();
+  async getPreview(date: string, roleFilter?: RoleFilter, paymentMethod?: string) {
+    const normalizedMethod = this.normalizePaymentMethod(paymentMethod);
+    const paymentsFilter: Record<string, unknown> = this.paymentFilter(date, roleFilter);
+    if (normalizedMethod) paymentsFilter.method = normalizedMethod;
+
+    const payments = await this.invoicePaymentModel.find(paymentsFilter).lean();
     const { start: dayStart, end: dayEnd } = this.getWorkdayBounds(date);
     const invoiceFilter: Record<string, unknown> = { createdAt: { $gte: dayStart, $lt: dayEnd } };
     if (roleFilter?.role === UserRole.Doctor && roleFilter?.doctorId) {
@@ -80,7 +110,7 @@ export class DailyCloseoutsService {
         _id: inv._id,
         invoiceId: inv._id,
         amount: 0,
-        method: PaymentMethod.Cash,
+        method: normalizedMethod ?? PaymentMethod.Cash,
         paidAt: '',
         paidDate: date,
         beforeRemaining: 0,
