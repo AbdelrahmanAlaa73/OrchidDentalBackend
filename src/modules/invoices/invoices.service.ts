@@ -10,21 +10,7 @@ import { Expense } from '../expenses/schemas/expense.schema';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { UpdateInvoiceDto } from './dto/update-invoice.dto';
 import { InvoiceStatus, DiscountType, PaymentMethod } from '../../enums';
-
-function computeStatus(paid: number, total: number): InvoiceStatus {
-  if (paid >= total || total === 0) return InvoiceStatus.Paid;
-  if (paid > 0) return InvoiceStatus.Partial;
-  return InvoiceStatus.Unpaid;
-}
-
-function applyDiscount(subtotal: number, discount: number, type: DiscountType): number {
-  return type === DiscountType.Percentage ? Math.max(0, subtotal - (subtotal * discount) / 100) : Math.max(0, subtotal - discount);
-}
-
-function normalizeMethod(m: string): PaymentMethod {
-  if (m === 'transfer') return PaymentMethod.Instapay;
-  return Object.values(PaymentMethod).includes(m as PaymentMethod) ? (m as PaymentMethod) : PaymentMethod.Cash;
-}
+import { applyDiscount, computeStatus, normalizeMethod } from './invoice-helpers';
 
 @Injectable()
 export class InvoicesService {

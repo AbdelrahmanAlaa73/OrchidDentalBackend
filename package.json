@@ -9,7 +9,10 @@
     "dev": "nodemon",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
-    "seed": "echo Seed runs automatically on app startup when DB is empty"
+    "seed": "echo Seed runs automatically on app startup when DB is empty",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^10.3.0",
@@ -34,11 +37,17 @@
     "@nestjs/cli": "^10.3.0",
     "@nestjs/mapped-types": "^2.0.4",
     "@nestjs/schematics": "^10.1.0",
+    "@nestjs/testing": "^10.4.22",
     "@types/bcrypt": "^5.0.2",
+    "@types/jest": "^30.0.0",
     "@types/luxon": "^3.7.1",
     "@types/node": "^20.10.5",
     "@types/passport-jwt": "^4.0.0",
+    "@types/supertest": "^7.2.0",
+    "jest": "^30.3.0",
     "nodemon": "^3.1.14",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"
   }
