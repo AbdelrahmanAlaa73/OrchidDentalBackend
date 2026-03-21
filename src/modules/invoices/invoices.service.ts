@@ -68,7 +68,7 @@ export class InvoicesService {
     const skip = (page - 1) * limit;
 
     const aggFilter = { ...filter };
-    const [invoices, total, aggResult, totalExpenses] = await Promise.all([
+    const [invoices, total, aggResult, totalExpenses, breakdown] = await Promise.all([
       this.invoiceModel
         .find(filter)
         .populate('patientId', 'name nameAr phone')
@@ -116,6 +116,24 @@ export class InvoicesService {
             .lean()
             .then((expenses) => expenses.reduce((sum, e) => sum + e.amount, 0))
         : Promise.resolve(0),
+      this.invoiceModel
+        .find(filter)
+        .select('_id')
+        .lean()
+        .then(async (matchingInvoices) => {
+          const ids = matchingInvoices.map((inv) => inv._id);
+          if (!ids.length) return { cash: 0, vodafoneCash: 0, instapay: 0 };
+          const payments = await this.paymentModel.find({ invoiceId: { $in: ids } }).select('amount method').lean();
+          let cash = 0;
+          let vodafoneCash = 0;
+          let instapay = 0;
+          for (const p of payments) {
+            if (p.method === PaymentMethod.Cash) cash += p.amount;
+            else if (p.method === PaymentMethod.VodafoneCash) vodafoneCash += p.amount;
+            else if (p.method === PaymentMethod.Instapay) instapay += p.amount;
+          }
+          return { cash, vodafoneCash, instapay };
+        }),
     ]);
 
     const agg = aggResult ?? {
@@ -154,6 +172,7 @@ export class InvoicesService {
       pendingInvoicesCount: agg.pendingInvoicesCount,
       totalDiscounts: agg.totalDiscounts,
       completedInvoicesCount: agg.completedInvoicesCount,
+      collectedByPaymentMethod: breakdown,
     };
     if (query.startDate && query.endDate) {
       result.afterExpenses = agg.totalCollected - totalExpenses;

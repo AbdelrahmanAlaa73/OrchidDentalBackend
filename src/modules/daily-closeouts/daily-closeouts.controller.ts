@@ -42,13 +42,11 @@ export class DailyCloseoutsController {
   getByDate(
     @Param('date') date: string,
     @CurrentUser() user?: CurrentUserPayload,
-    @Query('paymentMethod') paymentMethod?: string,
-    @Query('method') method?: string,
   ): Promise<Record<string, unknown>> {
     const roleFilter = user
       ? { role: user.role as UserRole, userId: user.id, doctorId: user.doctorId }
       : undefined;
-    return this.dailyCloseoutsService.getByDate(date, roleFilter, paymentMethod ?? method);
+    return this.dailyCloseoutsService.getByDate(date, roleFilter);
   }
 
   @Delete(':date')

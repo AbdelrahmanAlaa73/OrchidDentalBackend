@@ -80,10 +80,10 @@ export class DailyCloseoutsService {
     return this.dailyCloseoutModel.find(filter).populate('closedBy', 'name email').sort({ date: -1 }).lean();
   }
 
-  async getByDate(date: string, roleFilter?: RoleFilter, paymentMethod?: string): Promise<Record<string, unknown>> {
+  async getByDate(date: string, roleFilter?: RoleFilter): Promise<Record<string, unknown>> {
     const closeout = await this.dailyCloseoutModel.findOne({ date }).populate('closedBy', 'name email').lean();
     if (!closeout) throw new NotFoundException('Closeout not found for this date');
-    const breakdown = await this.getPreview(date, roleFilter, paymentMethod);
+    const breakdown = await this.getPreview(date, roleFilter);
     return { ...closeout, ...breakdown } as Record<string, unknown>;
   }
 

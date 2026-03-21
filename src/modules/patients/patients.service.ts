@@ -56,17 +56,13 @@ export class PatientsService {
     const SINGLE_LETTER_LIMIT = 20;
 
     if (searchTrimmed) {
-      if (searchTrimmed.length === 1) {
-        const escaped = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const re = new RegExp(escaped, 'i');
-        filter.$or = [
-          { name: re },
-          { nameAr: re },
-          { phone: { $regex: escaped } },
-        ];
-      } else {
-        filter.$text = { $search: searchTrimmed };
-      }
+      const escaped = searchTrimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(escaped, 'i');
+      filter.$or = [
+        { name: re },
+        { nameAr: re },
+        { phone: { $regex: escaped } },
+      ];
     }
 
     const page = Math.max(1, query.page || 1);
