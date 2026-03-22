@@ -69,6 +69,15 @@ export class AuthService {
     return user;
   }
 
+  async listUsers() {
+    return this.userModel
+      .find()
+      .select('-passwordHash')
+      .populate('doctorId', 'name nameAr specialty color role isOwner')
+      .sort({ createdAt: -1 })
+      .lean();
+  }
+
   async register(dto: RegisterDto) {
     const email = dto.email.toLowerCase().trim();
     const existing = await this.userModel.findOne({ email }).lean();

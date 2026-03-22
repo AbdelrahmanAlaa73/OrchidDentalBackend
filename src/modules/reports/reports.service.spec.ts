@@ -48,6 +48,7 @@ describe('ReportsService', () => {
       lean: jest.fn().mockResolvedValue([
         {
           doctorId,
+          subtotal: 300,
           total: 300,
           items: [
             { procedure: 'Exam', quantity: 1, total: 100 },
@@ -87,7 +88,9 @@ describe('ReportsService', () => {
       endDate: '2026-03-21',
     });
 
+    expect(result.totalSubtotal).toBe(300);
     expect(result.totalRevenue).toBe(300);
+    expect(result.totalAfterDiscount).toBe(300);
     expect(result.totalCollected).toBe(280);
     expect(result.totalExpenses).toBe(100);
     expect(result.netRevenue).toBe(180);
@@ -116,5 +119,35 @@ describe('ReportsService', () => {
         expect.objectContaining({ date: '2026-03-21', revenue: 80, expenses: 40, appointmentCount: 1 }),
       ]),
     );
+  });
+
+  it('uses unitPrice * quantity when line total is missing', async () => {
+    const doctorId = new Types.ObjectId();
+    invoiceModel.find.mockReturnValue({
+      lean: jest.fn().mockResolvedValue([
+        {
+          doctorId,
+          subtotal: 150,
+          total: 150,
+          items: [{ procedure: 'X', quantity: 3, unitPrice: 50 }],
+        },
+      ]),
+    });
+    invoicePaymentModel.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+    expenseModel.find.mockReturnValue({ lean: jest.fn().mockResolvedValue([]) });
+    doctorModel.find.mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        lean: jest.fn().mockResolvedValue([{ _id: doctorId, doctorSharePercent: 80, clinicSharePercent: 20 }]),
+      }),
+    });
+    appointmentModel.aggregate.mockResolvedValue([]);
+
+    const result = await service.getRevenueReport({ startDate: '2026-01-01', endDate: '2026-01-01' });
+
+    expect(result.procedureBreakdown).toEqual(
+      expect.arrayContaining([expect.objectContaining({ procedure: 'X', totalAmount: 150 })]),
+    );
+    expect(result.doctorShare).toBe(120);
+    expect(result.clinicShare).toBe(30);
   });
 });

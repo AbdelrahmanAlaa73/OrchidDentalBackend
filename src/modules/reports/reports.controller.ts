@@ -16,7 +16,11 @@ export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('revenue')
-  @ApiOperation({ summary: 'Get revenue report (Owner/Admin only)' })
+  @ApiOperation({
+    summary: 'Get revenue report (Owner/Admin only)',
+    description:
+      'totalSubtotal = sum of invoice subtotals (pre-discount). totalRevenue / totalAfterDiscount = sum of invoice totals after discount. procedureBreakdown uses line amounts (item.total or unitPrice × quantity).',
+  })
   getRevenue(@Query() query: RevenueReportQueryDto) {
     return this.reportsService.getRevenueReport(query);
   }

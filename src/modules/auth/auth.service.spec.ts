@@ -24,6 +24,7 @@ describe('AuthService', () => {
   beforeEach(async () => {
     userModel = {
       findOne: jest.fn(),
+      find: jest.fn(),
       findById: jest.fn(),
       create: jest.fn(),
       findByIdAndDelete: jest.fn(),
@@ -142,6 +143,29 @@ describe('AuthService', () => {
           role: UserRole.Doctor,
         }),
       ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('listUsers', () => {
+    it('returns all users without passwordHash, sorted by createdAt desc', async () => {
+      const users = [
+        { _id: new Types.ObjectId(), email: 'a@x.com', name: 'A', role: UserRole.Admin },
+        { _id: new Types.ObjectId(), email: 'b@x.com', name: 'B', role: UserRole.Doctor },
+      ];
+      userModel.find.mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          populate: jest.fn().mockReturnValue({
+            sort: jest.fn().mockReturnValue({
+              lean: jest.fn().mockResolvedValue(users),
+            }),
+          }),
+        }),
+      });
+
+      const result = await service.listUsers();
+
+      expect(userModel.find).toHaveBeenCalledWith();
+      expect(result).toEqual(users);
     });
   });
 

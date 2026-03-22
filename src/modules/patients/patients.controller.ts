@@ -62,7 +62,9 @@ export class PatientsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Get patient by ID (includes appointments, invoices, dental treatments, alerts)' })
+  @ApiOperation({
+    summary: 'Get patient by ID (includes appointments, invoices, tooth procedures, alerts, prescriptions, dentalTreatments)',
+  })
   @ApiParam({ name: 'id', description: 'Patient MongoDB ObjectId' })
   findOne(@Param('id') id: string): Promise<Record<string, unknown>> {
     return this.patientsService.findOne(id);

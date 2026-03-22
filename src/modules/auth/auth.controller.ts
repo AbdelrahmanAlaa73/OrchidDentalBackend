@@ -41,6 +41,15 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.Owner, UserRole.Admin)
+  @Get('users')
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'List all registered users (Owner/Admin only). Passwords are never returned.' })
+  async listUsers() {
+    return this.authService.listUsers();
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.Owner, UserRole.Admin)
   @Patch('users/:id')
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Update user by ID (Owner/Admin only)' })

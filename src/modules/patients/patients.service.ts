@@ -95,11 +95,12 @@ export class PatientsService {
       .populate('assignedDoctorId', 'name nameAr specialty color')
       .lean();
     if (!patient) throw new NotFoundException('Patient not found');
-    const [appointments, invoices, toothProcedures, alerts] = await Promise.all([
+    const [appointments, invoices, toothProcedures, alerts, prescriptions] = await Promise.all([
       this.appointmentModel.find({ patientId }).populate('doctorId', 'name nameAr color').sort({ date: -1, startTime: -1 }).lean(),
       this.invoiceModel.find({ patientId }).populate('doctorId', 'name nameAr').sort({ createdAt: -1 }).lean(),
       this.toothProcedureModel.find({ patientId }).populate('doctorId', 'name nameAr').sort({ date: -1 }).lean(),
       this.medicalAlertModel.find({ patientId }).lean(),
+      this.prescriptionsService.findByPatient(id),
     ]);
     const medicalAlerts = alerts.map((a: Record<string, unknown>) => ({
       id: a._id != null ? String(a._id) : undefined,
@@ -127,6 +128,7 @@ export class PatientsService {
       toothProcedures,
       medicalAlerts,
       dentalTreatments,
+      prescriptions,
     };
   }
 

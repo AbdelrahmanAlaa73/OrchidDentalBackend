@@ -3,7 +3,8 @@ import { IsOptional, IsString } from 'class-validator';
 
 export class RevenueReportQueryDto {
   @ApiPropertyOptional({
-    description: 'Period preset: daily, week, month, semi_annual, year. Ignored if startDate/endDate provided.',
+    description:
+      'Period preset: daily, week, month, semi_annual, year. Ignored if startDate/endDate provided. Response includes totalSubtotal (pre-discount) and totalRevenue / totalAfterDiscount (post-discount).',
   })
   @IsOptional()
   @IsString()

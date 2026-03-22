@@ -29,8 +29,25 @@ export type RevenueReportQuery = {
 
 type BreakdownItem = { count: number; totalAmount: number };
 
+/** Line amount before invoice-level discount; uses stored total or unitPrice * quantity. */
+function invoiceLineAmount(item: {
+  total?: number;
+  unitPrice?: number;
+  quantity?: number;
+}): number {
+  if (item.total != null && !Number.isNaN(item.total)) return item.total;
+  const q = item.quantity ?? 1;
+  const up = item.unitPrice ?? 0;
+  return q * up;
+}
+
 export type RevenueReportResult = {
+  /** Sum of invoice subtotals (line totals before invoice-level discount). */
+  totalSubtotal: number;
+  /** Sum of invoice totals after discount (same as totalAfterDiscount). */
   totalRevenue: number;
+  /** Alias for totalRevenue — amount after invoice-level discounts. */
+  totalAfterDiscount: number;
   totalCollected: number;
   totalExpenses: number;
   netRevenue: number;
@@ -147,6 +164,7 @@ export class ReportsService {
       ]),
     ]);
 
+    const totalSubtotal = invoices.reduce((sum, inv) => sum + (inv.subtotal ?? 0), 0);
     const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total ?? 0), 0);
     const totalCollected = payments.reduce((sum, p) => sum + p.amount, 0);
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
@@ -181,13 +199,13 @@ export class ReportsService {
       const doctorIdStr = String(inv.doctorId);
       const pricing = doctorPercentMap.get(doctorIdStr) ?? { doctorPercent: 80, clinicPercent: 20 };
       for (const item of inv.items ?? []) {
-        const total = item.total ?? 0;
-        doctorShare += (total * pricing.doctorPercent) / 100;
-        clinicShare += (total * pricing.clinicPercent) / 100;
+        const lineTotal = invoiceLineAmount(item);
+        doctorShare += (lineTotal * pricing.doctorPercent) / 100;
+        clinicShare += (lineTotal * pricing.clinicPercent) / 100;
         const key = item.procedure;
         if (!procedureBreakdown[key]) procedureBreakdown[key] = { count: 0, totalAmount: 0 };
         procedureBreakdown[key].count += item.quantity ?? 1;
-        procedureBreakdown[key].totalAmount += total;
+        procedureBreakdown[key].totalAmount += lineTotal;
       }
     }
 
@@ -220,7 +238,9 @@ export class ReportsService {
       }));
 
     return {
+      totalSubtotal,
       totalRevenue,
+      totalAfterDiscount: totalRevenue,
       totalCollected,
       totalExpenses,
       netRevenue: totalCollected - totalExpenses,
