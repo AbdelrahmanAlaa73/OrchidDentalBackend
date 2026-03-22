@@ -16,7 +16,7 @@ export function setupSwagger(app: INestApplication): void {
     )
     .setVersion('1.0')
     .addServer(`http://localhost:${port}`, 'Local')
-    .addServer('https://orchiddental.onrender.com', 'Production')
+    .addServer('https://orchiddental.onrender.com', 'development')
     .addBearerAuth(
       {
         type: 'http',
