@@ -89,6 +89,19 @@ export class PrescriptionsService {
       .lean();
   }
 
+  async findAll(patientId?: string) {
+    const filter = patientId?.trim()
+      ? { patientId: toObjectIdOrThrow(patientId.trim(), 'patientId') }
+      : {};
+
+    return this.prescriptionModel
+      .find(filter)
+      .populate('doctorId', 'name nameAr')
+      .populate('appointmentId', 'date startTime')
+      .sort({ datePrescribed: -1, createdAt: -1 })
+      .lean();
+  }
+
   async create(patientId: string, dto: CreatePrescriptionDto) {
     const appointmentId = dto.appointmentId ? toObjectIdOrUndefined(dto.appointmentId) : undefined;
     if (dto.appointmentId && !appointmentId) {

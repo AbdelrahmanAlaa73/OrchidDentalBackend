@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   UseGuards,
-  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
 import { PrescriptionsService } from './prescriptions.service';
@@ -28,13 +27,10 @@ export class PrescriptionsController {
   constructor(private readonly prescriptionsService: PrescriptionsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'List prescriptions for a patient' })
-  @ApiQuery({ name: 'patientId', required: true, description: 'Patient MongoDB ObjectId' })
+  @ApiOperation({ summary: 'List all prescriptions (optionally filter by patient)' })
+  @ApiQuery({ name: 'patientId', required: false, description: 'Patient MongoDB ObjectId' })
   findAll(@Query('patientId') patientId?: string) {
-    if (!patientId?.trim()) {
-      throw new BadRequestException('Query parameter patientId is required');
-    }
-    return this.prescriptionsService.findByPatient(patientId.trim());
+    return this.prescriptionsService.findAll(patientId);
   }
 
   @Post()
