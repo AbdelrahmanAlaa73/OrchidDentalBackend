@@ -16,7 +16,8 @@ export function setupSwagger(app: INestApplication): void {
     )
     .setVersion('1.0')
     .addServer(`http://localhost:${port}`, 'Local')
-    .addServer('https://orchiddental.onrender.com', 'development')
+    .addServer('https://orchiddental.onrender.com', 'Development')
+    .addServer('https://orchiddentalbackendproduction.onrender.com', 'Production')
     .addBearerAuth(
       {
         type: 'http',
@@ -33,7 +34,8 @@ export function setupSwagger(app: INestApplication): void {
   const document = SwaggerModule.createDocument(app, config);
   document.servers = [
     { url: `http://localhost:${port}`, description: 'Local' },
-    { url: 'https://orchiddental.onrender.com', description: 'Production' },
+    { url: 'https://orchiddental.onrender.com/api', description: 'Development' },
+    { url: 'https://orchiddentalbackendproduction.onrender.com', description: 'Production' },
   ];
   SwaggerModule.setup('api/docs', app, document, {
     swaggerOptions: {
